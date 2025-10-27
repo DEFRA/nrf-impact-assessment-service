@@ -1,0 +1,237 @@
+specification {
+    deploymentNode environment
+    deploymentNode zone
+    deploymentNode vpc {
+        notation 'Virtual Private Cloud'
+        technology 'AWS VPC'
+        style {
+            color blue
+            icon https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FAmazon-VPC_VPN-Gateway_light-bg.svg
+        }
+    }
+    deploymentNode ecsCluster {
+        notation 'Container Cluster'
+        technology 'AWS ECS Cluster'
+        style {
+            color green
+            icon https://icons.terrastruct.com/aws%2FContainer%2FAmazon-Elastic-Container-Service-ECS_light-bg.svg
+        }
+    }
+    deploymentNode ecsService {
+        notation 'Container Service'
+        technology 'AWS ECS Service'
+        style {
+            color green
+            icon https://icons.terrastruct.com/aws%2FContainer%2FAmazon-Elastic-Container-Service-ECS_Service_light-bg.svg
+        }
+    }
+    deploymentNode ecr {
+        notation 'Container Registry'
+        technology 'AWS ECR'
+        style {
+            color blue
+            icon https://icons.terrastruct.com/aws%2FContainer%2FAmazon-Elastic-Container-Registry-ECR_light-bg.svg
+        }
+    }
+    deploymentNode rds {
+        notation 'Database'
+        technology 'AWS RDS Aurora'
+        style {
+            color green
+            icon https://icons.terrastruct.com/aws%2FDatabase%2FAmazon-Aurora_light-bg.svg
+        }
+    }
+    deploymentNode s3 {
+        notation 'Object Storage'
+        technology 'AWS S3'
+        style {
+            color indigo
+            icon https://icons.terrastruct.com/aws%2FStorage%2FAmazon-Simple-Storage-Service-S3_light-bg.svg
+        }
+    }
+    deploymentNode sqs {
+        notation 'Message Queue'
+        technology 'AWS SQS'
+        style {
+            color indigo
+            icon https://icons.terrastruct.com/aws%2FApplication%20Integration%2FAmazon-Simple-Queue-Service-SQS_light-bg.svg
+        }
+    }
+}
+
+deployment {
+    environment prod 'Production' {
+        summary 'Production environment for NRF Impact Assessment Service'
+        description '''
+            Production environment deployed in AWS eu-west-2 (London) region.
+            Contains all microservices, databases, and supporting infrastructure.
+        '''
+
+        zone euWest2 'EU West 2 (London)' {
+            summary 'AWS eu-west-2 region'
+
+            ecr ecrRegistry 'ECR Registry' {
+                summary 'Container image registry for all microservices'
+            }
+
+            vpc nrfVPC 'NRF VPC' {
+                summary 'Virtual Private Cloud for NRF services'
+                technology 'AWS VPC with public and private subnets'
+
+                // Database
+                rds auroraDB 'Aurora PostgreSQL' {
+                    summary 'Primary database for NRF services'
+                    technology 'AWS RDS Aurora PostgreSQL'
+                    instanceOf payForNRFService.postgresDatabase {
+                        title 'NRF PostgreSQL Database'
+                    }
+                }
+
+                // S3 Buckets
+                s3 tenantStorage 'Tenant Bucket' {
+                    summary 'Storage for verified uploaded files'
+                    instanceOf payForNRFService.nrfFrontendService.tenantBucket
+                }
+
+                s3 quarantineStorage 'Quarantine Bucket' {
+                    summary 'Temporary storage for files awaiting virus scan'
+                    instanceOf payForNRFService.nrfFrontendService.quarantineBucket
+                }
+
+                // SQS Queues
+                sqs impactQueue 'Impact Assessment Queue' {
+                    summary 'Queue for processing impact assessments'
+                    instanceOf payForNRFService.nrfImpactAssessmentService.impactAssessmentQueue
+                }
+
+                sqs impactDLQ 'Impact Assessment DLQ' {
+                    summary 'Dead letter queue for failed impact assessments'
+                    instanceOf payForNRFService.nrfImpactAssessmentService.impactAssessmentDLQueue
+                }
+
+                // ECS Cluster
+                ecsCluster nrfCluster 'NRF ECS Cluster' {
+                    summary 'ECS cluster hosting all NRF microservices'
+                    technology 'AWS ECS Fargate'
+
+                    // Frontend Services
+                    ecsService frontendSvc 'Frontend Service' {
+                        summary 'Web frontend for developers'
+                        technology 'ECS Fargate Service - 2 tasks'
+                        instanceOf payForNRFService.nrfFrontendService.nrfFrontendService
+                    }
+
+                    ecsService uploaderSvc 'CDP Uploader Service' {
+                        summary 'File upload and virus scanning service'
+                        technology 'ECS Fargate Service - 2 tasks'
+                        instanceOf payForNRFService.nrfFrontendService.cdpUploaderService
+                    }
+
+                    ecsService clamAVSvc 'ClamAV Scanner' {
+                        summary 'Antivirus scanner for uploaded files'
+                        technology 'ECS Fargate Service - 2 tasks'
+                        instanceOf payForNRFService.nrfFrontendService.clamAVScanner
+                    }
+
+                    // Impact Assessment Service
+                    ecsService impactWorkerSvc 'Impact Assessment Worker' {
+                        summary 'Worker service for calculating impact assessments'
+                        technology 'ECS Fargate Service - 2 tasks'
+                        instanceOf payForNRFService.nrfImpactAssessmentService.impactAssessmentWorker
+                    }
+
+                    // Verification Service
+                    ecsService verificationSvc 'Verification Service' {
+                        summary 'Service for LPA agents to verify applications'
+                        technology 'ECS Fargate Service - 2 tasks'
+                        instanceOf payForNRFService.nrfVerificationService.verificationService
+                    }
+
+                    // Invoice Services
+                    ecsService invoiceRequestorSvc 'Invoice Requestor Service' {
+                        summary 'Service for requesting invoices from SOP'
+                        technology 'ECS Fargate Service - 1 task'
+                        instanceOf payForNRFService.nrfInvoiceRequestorService.invoiceRequestorService
+                    }
+
+                    ecsService reconciliationSvc 'Reconciliation Service' {
+                        summary 'Service for reconciling payments'
+                        technology 'ECS Fargate Service - 1 task'
+                        instanceOf payForNRFService.nrfReconciliationService.invoiceReconciliationService
+                    }
+
+                    // Case Management Service
+                    ecsService caseManagementSvc 'Case Management Service' {
+                        summary 'Service for NRF operations to manage cases'
+                        technology 'ECS Fargate Service - 2 tasks'
+                        instanceOf payForNRFService.nrfCaseManagementService.caseManagementService
+                    }
+                }
+            }
+        }
+    }
+}
+
+views {
+    deployment view prodOverview {
+        title 'Production Deployment Overview'
+        description 'High-level view of the production environment'
+
+        include prod.euWest2.*
+    }
+
+    deployment view prodInfrastructure {
+        title 'Production Infrastructure'
+        description 'Detailed view of AWS infrastructure components'
+
+        include prod.euWest2.nrfVPC.**
+    }
+
+    deployment view frontendDeployment {
+        title 'Frontend Services Deployment'
+        description 'Deployment architecture for frontend services'
+
+        include
+            prod.euWest2.nrfVPC.nrfCluster.frontendSvc,
+            prod.euWest2.nrfVPC.nrfCluster.uploaderSvc,
+            prod.euWest2.nrfVPC.nrfCluster.clamAVSvc,
+            prod.euWest2.nrfVPC.tenantStorage,
+            prod.euWest2.nrfVPC.quarantineStorage,
+            prod.euWest2.nrfVPC.auroraDB,
+            prod.euWest2.nrfVPC.impactQueue
+
+        include * -> *
+    }
+
+    deployment view impactAssessmentDeployment {
+        title 'Impact Assessment Service Deployment'
+        description 'Deployment architecture for impact assessment service'
+
+        include
+            prod.euWest2.nrfVPC.nrfCluster.impactWorkerSvc,
+            prod.euWest2.nrfVPC.impactQueue,
+            prod.euWest2.nrfVPC.impactDLQ,
+            prod.euWest2.nrfVPC.auroraDB
+
+        include * -> *
+    }
+
+    deployment view ecsClusterView {
+        title 'ECS Cluster Services'
+        description 'All microservices running in the ECS cluster'
+
+        include prod.euWest2.nrfVPC.nrfCluster.*
+    }
+
+    deployment view dataStorageView {
+        title 'Data Storage Architecture'
+        description 'Database and storage components'
+
+        include
+            prod.euWest2.nrfVPC.auroraDB,
+            prod.euWest2.nrfVPC.tenantStorage,
+            prod.euWest2.nrfVPC.quarantineStorage,
+            prod.euWest2.nrfVPC.impactQueue,
+            prod.euWest2.nrfVPC.impactDLQ
+    }
+}

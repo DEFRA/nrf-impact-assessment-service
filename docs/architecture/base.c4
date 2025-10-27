@@ -17,7 +17,7 @@ specification {
             color green
             icon https://icons.terrastruct.com/aws%2FDatabase%2FAmazon-Aurora_light-bg.svg
         }
-        technology 'AWS RDS Aurora database'
+        technology 'AWS RDS Aurora PostgreSQL database'
     }
     element component
     element queue {
@@ -28,187 +28,278 @@ specification {
         }
         technology 'AWS SQS queue'
     }
+    element storage {
+        style {
+            shape cylinder
+            color indigo
+            icon https://icons.terrastruct.com/aws%2FStorage%2FAmazon-Simple-Storage-Service-S3_Bucket_light-bg.svg
+        }
+        technology 'AWS S3 bucket'
+    }
 }
 
 model {
-    developer = actor 'Developer'
-    lpaAgent = actor 'LPA Planning Agent'
-    nrfOperations = actor 'NRF Operations'
-    ssclAdmin = actor 'SSCL Finance Admin'
+    developer = actor 'Developer' {
+        description 'Planning application developer submitting applications and making payments'
+    }
+    lpaAgent = actor 'LPA Planning Agent' {
+        description 'Local Planning Authority agent verifying planning applications'
+    }
+    nrfOperations = actor 'NRF Operations' {
+        description 'Nature Recovery Fund operations team managing cases'
+    }
+    ssclAdmin = actor 'SSCL Finance Admin' {
+        description 'Shared Service Centre Limited finance administrator processing invoices'
+    }
 
-    system govUKNotify {
+    govUKNotify = system 'GOV.UK Notify' {
+        description 'GOV.UK Notify service for sending email and SMS notifications'
+        technology 'GOV.UK Platform as a Service'
         style {
             color secondary
         }
     }
-    system govUKPay {
+
+    govUKPay = system 'GOV.UK Pay' {
+        description 'GOV.UK Pay service for processing credit card payments under £10,000'
+        technology 'GOV.UK Platform as a Service'
         style {
             color secondary
         }
     }
-    system SOP {
-        style {
-            color red
-        }
+
+    SOP = system 'Shared Oracle Platform' {
+        description 'DEFRA financial ERP system for invoice processing'
         technology 'Oracle Fusion ERP system'
         icon https://icons.terrastruct.com/dev%2Foracle.svg
-    }
-    component sopFTPServer {
         style {
             color red
         }
-        technology 'FTP server'
-        icon https://icons.terrastruct.com/aws%2FMigration%20&%20Transfer%2FAWS-Transfer-for-FTP_Resource-Icon_light-bg.svg
     }
-    system customerBank {
+
+    component sopFTPServer 'SOP FTP Server' {
+        description 'FTP server for exchanging invoice and payment data with SOP'
+        technology 'AWS Transfer for FTP'
+        icon https://icons.terrastruct.com/aws%2FMigration%20&%20Transfer%2FAWS-Transfer-for-FTP_Resource-Icon_light-bg.svg
+        style {
+            color red
+        }
+    }
+
+    customerBank = system 'Customer Bank' {
+        description 'Customer banking system for processing bank transfer payments over £10,000'
+        technology 'Banking system'
         style {
             color red
         }
     }
 
     payForNRFService = system 'Pay for NRF Service' {
+        description 'Complete Nature Recovery Fund service platform for processing planning applications and levy payments'
         style {
             color green
-            opacity 20%
         }
-        database postgresDatabase {
-            style {
-                shape storage
-            }
+
+        database postgresDatabase 'PostgreSQL Database' {
+            description 'Central database storing planning applications, geospatial data, and assessment results'
         }
 
         nrfFrontendService = system 'NRF Frontend Service' {
+            description 'User-facing web application for submitting planning applications and initiating payments'
             style {
                 color green
-                opacity 30%
             }
-            microservice nrfFrontendService {
-                technology 'NodeJS frontend service'
+
+            microservice nrfFrontendService 'Frontend Service' {
+                description 'Frontend application server handling user requests and orchestration'
+                technology 'Node.js web service'
                 icon https://icons.terrastruct.com/dev%2Fnodejs.svg
             }
-            microservice frontendFileUploader {
+
+            microservice cdpUploaderService 'CDP Uploader Service' {
+                description 'Document upload service with virus scanning capabilities'
+                technology 'File upload and scanning service'
                 style {
                     color indigo
                 }
             }
-            component s3UploadBucket {
+
+            storage tenantBucket 'Tenant Bucket' {
+                description 'Secure storage for verified application documents'
+            }
+
+            storage quarantineBucket 'Quarantine Bucket' {
+                description 'Temporary storage for documents awaiting virus scan'
+            }
+
+            component clamAVScanner 'ClamAV Scanner' {
+                description 'Antivirus scanner for uploaded documents'
+                technology 'ClamAV antivirus engine'
                 style {
                     color indigo
                 }
-                technology 'AWS S3 upload bucket'
-                icon https://icons.terrastruct.com/aws%2FStorage%2FAmazon-Simple-Storage-Service-S3_Bucket_light-bg.svg
             }
-            component clamAVScanner {
-                style {
-                    color indigo
-                }
-                technology 'ClamAV antivirus scanner'
-            }
+
             developer -> nrfFrontendService 'Submits planning application details'
-            nrfFrontendService -> frontendFileUploader 'Uploads shape file of site boundary to S3'
-            frontendFileUploader -> clamAVScanner 'Scans file for viruses in quarantine bucket'
-            clamAVScanner -> s3UploadBucket 'Moves file to upload bucket'
-            nrfFrontendService -> postgresDatabase 'Saves planning application details to database'
-            nrfFrontendService -> impactAssessmentQueue 'Pushes planning application details to queue'
-            nrfFrontendService -> govUKPay 'Initiate payment request for NRF Service with credit card(< 10k)'
-            govUKPay -> developer 'Pays for NRF Service with credit card(< 10k)'
+            nrfFrontendService -> cdpUploaderService 'Initiates file upload request'
+            cdpUploaderService -> quarantineBucket 'Uploads file to quarantine'
+            clamAVScanner -> cdpUploaderService 'Notifies scan outcome'
+            cdpUploaderService -> tenantBucket 'Moves clean file to tenant bucket'
+            cdpUploaderService -> quarantineBucket 'Deletes infected files'
+            nrfFrontendService -> postgresDatabase 'Saves planning application details'
+            nrfFrontendService -> impactAssessmentQueue 'Pushes application to queue for processing'
+            nrfFrontendService -> govUKPay 'Initiates payment request (credit card < £10k)'
+            govUKPay -> developer 'Processes payment via credit card'
         }
+
         nrfImpactAssessmentService = system 'Impact Assessment Service' {
+            description 'Geospatial analysis service calculating NRF levy estimates based on biodiversity impact'
             style {
                 color green
-                opacity 30%
             }
-            queue impactAssessmentQueue
-            queue impactAssessmentDLQueue
-            microservice impactAssessmentWorker
-            impactAssessmentWorker -> impactAssessmentQueue 'Polls for new planning application details from queue'
-            impactAssessmentWorker -> impactAssessmentDLQueue 'Places failed messages on DLQ'
-            impactAssessmentWorker -> postgresDatabase 'Reads geospatial data from database'
-            impactAssessmentWorker -> postgresDatabase 'Saves impact assessment results to database'
-            impactAssessmentWorker -> govUKNotify 'Sends NRF levy estimate to developer'
-            impactAssessmentWorker -> govUKNotify 'Sends confirmation of payment request to developer'
-            govUKNotify -> developer 'Sends NRF levy estimate email to developer'
-            govUKNotify -> developer 'Sends confirmation of payment request email to developer'
+
+            queue impactAssessmentQueue 'Impact Assessment Queue' {
+                description 'Queue of planning applications awaiting impact assessment'
+            }
+
+            queue impactAssessmentDLQueue 'Impact Assessment DLQ' {
+                description 'Dead letter queue for failed assessment messages'
+            }
+
+            microservice impactAssessmentWorker 'Impact Assessment Worker' {
+                description 'Worker service processing geospatial calculations and generating levy estimates'
+                technology 'Python worker service'
+                icon https://icons.terrastruct.com/dev%2Fpython.svg
+            }
+
+            impactAssessmentWorker -> impactAssessmentQueue 'Polls for new applications'
+            impactAssessmentWorker -> impactAssessmentDLQueue 'Sends failed messages to DLQ'
+            impactAssessmentWorker -> postgresDatabase 'Reads geospatial and biodiversity data'
+            impactAssessmentWorker -> postgresDatabase 'Saves assessment results and levy estimates'
+            impactAssessmentWorker -> govUKNotify 'Sends NRF levy estimate notification'
+            impactAssessmentWorker -> govUKNotify 'Sends payment request confirmation'
+            govUKNotify -> developer 'Delivers levy estimate email'
+            govUKNotify -> developer 'Delivers payment confirmation email'
         }
+
         nrfVerificationService = system 'Verification Service' {
+            description 'LPA agent portal for reviewing and verifying planning application details'
             style {
                 color green
-                opacity 30%
             }
-            microservice verificationService {
-                technology 'NodeJS verification service'
+
+            microservice verificationService 'Verification Service' {
+                description 'Verification portal for Local Planning Authority agents'
+                technology 'Node.js web service'
                 icon https://icons.terrastruct.com/dev%2Fnodejs.svg
             }
-            lpaAgent -> verificationService 'Verifies planning application details'
-            verificationService -> postgresDatabase 'Reads planning application details from database'
+
+            lpaAgent -> verificationService 'Reviews and verifies planning applications'
+            verificationService -> postgresDatabase 'Reads application details for verification'
         }
+
         nrfInvoiceRequestorService = system 'Invoice Requestor Service' {
+            description 'Service generating and submitting invoices to the financial system for payments over £10k'
             style {
                 color green
-                opacity 30%
             }
-            microservice invoiceRequestorService
-            invoiceRequestorService -> sopFTPServer 'Sends invoices and customer details to SOP FTP server'
-            sopFTPServer -> SOP 'Consumes invoice and customer details from FTP server to generate new invoices'
-            ssclAdmin -> SOP 'Processes new invoices'
-            SOP -> developer 'Sends invoice to developer'
+
+            microservice invoiceRequestorService 'Invoice Requestor Service' {
+                description 'Invoice generation and submission service'
+                technology 'Python service'
+                icon https://icons.terrastruct.com/dev%2Fpython.svg
+            }
+
+            invoiceRequestorService -> postgresDatabase 'Reads verified application data'
+            invoiceRequestorService -> sopFTPServer 'Sends invoice and customer details via FTP'
+            sopFTPServer -> SOP 'Transfers data for invoice generation'
+            ssclAdmin -> SOP 'Processes and approves invoices'
+            SOP -> developer 'Sends invoice for bank transfer payment'
         }
+
         nrfReconciliationService = system 'Reconciliation Service' {
+            description 'Service reconciling bank transfer payments with invoices and completing applications'
             style {
                 color green
-                opacity 30%
             }
-            microservice invoiceReconciliationService
-            developer -> customerBank 'Pays invoice with bank transfer'
-            SOP -> customerBank 'Reads bank statements'
-            SOP -> sopFTPServer 'Sends transaction report to FTP server'
-            invoiceReconciliationService -> sopFTPServer 'Receives transaction report from FTP server'
-            invoiceReconciliationService -> postgresDatabase 'Saves reconciliation results to database'
-            invoiceReconciliationService -> postgresDatabase 'Updates NRF levy application status to Completed'
-            invoiceReconciliationService -> developer 'Sends confirmation of payment to developer'
+
+            microservice invoiceReconciliationService 'Invoice Reconciliation Service' {
+                description 'Payment reconciliation and application completion service'
+                technology 'Python service'
+                icon https://icons.terrastruct.com/dev%2Fpython.svg
+            }
+
+            developer -> customerBank 'Pays invoice via bank transfer (> £10k)'
+            SOP -> customerBank 'Retrieves bank statements'
+            SOP -> sopFTPServer 'Exports transaction report via FTP'
+            invoiceReconciliationService -> sopFTPServer 'Retrieves transaction report'
+            invoiceReconciliationService -> postgresDatabase 'Saves reconciliation results'
+            invoiceReconciliationService -> postgresDatabase 'Updates application status to Completed'
+            invoiceReconciliationService -> govUKNotify 'Sends payment confirmation'
+            govUKNotify -> developer 'Delivers payment confirmation email'
         }
+
         nrfCaseManagementService = system 'Case Management Service' {
+            description 'Operations portal for managing NRF cases, disputes, and exceptions'
             style {
                 color green
-                opacity 30%
             }
-            microservice caseManagementService {
-                technology 'NodeJS case management service'
+
+            microservice caseManagementService 'Case Management Service' {
+                description 'Case management portal for NRF operations team'
+                technology 'Node.js web service'
                 icon https://icons.terrastruct.com/dev%2Fnodejs.svg
             }
-            nrfOperations -> caseManagementService 'Manages NRF cases'
-            caseManagementService -> postgresDatabase 'Reads planning application details from database'
-            caseManagementService -> postgresDatabase 'Saves case management results to database'
+
+            nrfOperations -> caseManagementService 'Manages cases, disputes, and exceptions'
+            caseManagementService -> postgresDatabase 'Reads application and case data'
+            caseManagementService -> postgresDatabase 'Updates case management records'
+            caseManagementService -> govUKNotify 'Sends case notifications'
+            govUKNotify -> developer 'Delivers case update emails'
         }
     }
 }
 
 views {
     view index {
+        title 'NRF Complete System Overview'
+        description 'Complete system architecture showing all services, actors, and integrations'
         include *
     }
+
     view frontendService {
         title 'NRF Frontend Service'
+        description 'Developer-facing service for application submission, file upload, and payment initiation'
         include developer, nrfFrontendService.*, postgresDatabase, nrfImpactAssessmentService.impactAssessmentQueue, govUKPay
     }
+
     view impactAssessmentService {
         title 'NRF Impact Assessment Service'
+        description 'Geospatial analysis and levy calculation service with notification workflow'
         include nrfImpactAssessmentService.*, nrfFrontendService.nrfFrontendService, postgresDatabase, govUKNotify, developer
     }
+
     view verificationService {
         title 'NRF Verification Service'
-        include lpaAgent, verificationService, postgresDatabase
+        description 'LPA agent portal for application verification and approval'
+        include lpaAgent, nrfVerificationService.*, postgresDatabase
     }
+
     view invoiceRequestorService {
         title 'NRF Invoice Requestor Service'
-        include invoiceRequestorService.*, sopFTPServer, SOP, ssclAdmin, developer
+        description 'Invoice generation and submission to financial system for large payments'
+        include nrfInvoiceRequestorService.*, postgresDatabase, sopFTPServer, SOP, ssclAdmin, developer
     }
+
     view invoiceReconciliationService {
         title 'NRF Invoice Reconciliation Service'
-        include invoiceReconciliationService, sopFTPServer, SOP, ssclAdmin, developer, customerBank
+        description 'Bank payment reconciliation and application completion workflow'
+        include nrfReconciliationService.*, postgresDatabase, sopFTPServer, SOP, developer, customerBank, govUKNotify
     }
+
     view caseManagementService {
         title 'NRF Case Management Service'
-        include caseManagementService.*, nrfOperations, postgresDatabase
+        description 'Operations portal for managing cases, disputes, and exceptions'
+        include nrfCaseManagementService.*, nrfOperations, postgresDatabase, govUKNotify, developer
     }
 }
