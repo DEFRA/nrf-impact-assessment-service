@@ -14,7 +14,7 @@ logger = getLogger(__name__)
 @router.get("/test")
 async def root():
     logger.info("TEST ENDPOINT")
-    return {"ok": True}
+    return {"status": "OK", "status_code": 200}
 
 
 @router.get("/db")
