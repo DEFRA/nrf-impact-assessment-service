@@ -27,3 +27,27 @@ def test_trace_id_set():
     )
     resp = client.get("http://localhost:1234/test")
     assert resp.text == "trace-id-value"
+
+
+def test_create_client_with_proxy(monkeypatch):
+    import importlib
+
+    from pydantic import HttpUrl
+
+    # Set http_proxy config before reloading http_client
+    monkeypatch.setattr(
+        "app.config.config.http_proxy", HttpUrl("http://proxy.example.com:8080")
+    )
+
+    # Reload the http_client module to trigger creation of proxy_mounts with HttpUrl set
+    # This would fail with the old code (AttributeError: 'HttpUrl' object has no attribute 'url')
+    import app.common.http_client
+
+    importlib.reload(app.common.http_client)
+
+    # Verify clients can be created
+    client = app.common.http_client.create_client()
+    assert client is not None
+
+    async_client = app.common.http_client.create_async_client()
+    assert async_client is not None
