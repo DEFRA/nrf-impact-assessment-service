@@ -242,7 +242,7 @@ deployment {
 
         // External Government Services
         externalSystem govUKPay 'GOV.UK Pay' {
-            summary 'Government payment service for credit card transactions under £10,000'
+            summary 'Government payment service receiving session redirects for credit card payments (under £10,000)'
             technology 'GOV.UK Platform as a Service'
         }
 
@@ -535,18 +535,26 @@ deployment {
         aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.caseManagementSvc -> euWest2.nrfVPC.privateAppSubnetA.caseManagementRedisCache 'Caches sessions and case data'
         
         // NAT Gateway - Outbound Internet Traffic from Private Subnets
+        // Frontend Service to GOV.UK Notify and GOV.UK Pay (via NAT Gateway)
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes notifications and payment redirects through NAT'
+        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> govUKNotify 'Sends magic link emails for developers'
+        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> govUKPay 'Redirects session for credit card payment (< £10k)'
+        
+        // Verification Service to GOV.UK Notify (via NAT Gateway)
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.verificationSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes notifications through NAT'
+        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> govUKNotify 'Sends magic link emails for LPA agents'
+        
         // Impact Worker to GOV.UK Notify (via NAT Gateway)
         aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.impactWorkerSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes outbound notifications through NAT'
-        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> govUKNotify 'Sends email notifications'
+        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> govUKNotify 'Sends levy estimate and payment confirmation emails'
         
-        // Invoice Requestor and Reconciliation to SOP FTP Server (via NAT Gateway)
-        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.invoiceRequestorSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes invoice data to SOP FTP through NAT'
-        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.reconciliationSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes reconciliation data to SOP FTP through NAT'
-        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> sopFTPServer 'Connects to SOP FTP server for invoice and payment data exchange'
+        // Invoice Requestor to SOP FTP Server (via NAT Gateway)
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.invoiceRequestorSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes invoice data through NAT'
+        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> sopFTPServer 'Sends invoice data to SOP'
         
-        // Frontend Service to GOV.UK Pay (via NAT Gateway)
-        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes payment requests through NAT'
-        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> govUKPay 'Processes credit card payments under £10k'
+        // Reconciliation Service to SOP FTP Server (via NAT Gateway)
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.reconciliationSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes reconciliation requests through NAT'
+        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> sopFTPServer 'Retrieves bank payment data'
         
         // Secrets Manager and KMS
         aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster -> euWest2.secretsManager 'Retrieves application secrets'
@@ -611,9 +619,9 @@ views {
         include * -> *
     }
 
-    deployment view prodOverview {
-        title 'Production Deployment Overview'
-        description 'High-level view showing AWS cloud boundary with external services (GitHub, GOV.UK)'
+    deployment view completeInfrastructure {
+        title 'Complete Infrastructure'
+        description 'Complete production infrastructure showing all AWS services, external integrations, and network topology'
 
         include
             prod.planningDevelopers,
@@ -626,40 +634,14 @@ views {
             prod.github.nrfRepo,
             prod.github.githubActions,
             prod.aws,
-            prod.aws.euWest2.route53,
-            prod.aws.euWest2.awsShield,
-            prod.aws.euWest2.cloudFront,
-            prod.aws.euWest2.tgw,
-            prod.aws.euWest2.connectivityVPC,
-            prod.aws.euWest2.secretsManager,
-            prod.aws.euWest2.kmsKey,
-            prod.aws.euWest2.ecrRegistry,
-            prod.aws.euWest2.tenantStorage,
-            prod.aws.euWest2.quarantineStorage,
-            prod.aws.euWest2.impactQueue,
-            prod.aws.euWest2.impactDLQ,
-            prod.aws.euWest2.nrfVPC,
-            prod.aws.euWest2.nrfVPC.publicSubnetA,
-            prod.aws.euWest2.nrfVPC.publicSubnetB,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetB,
-            prod.aws.euWest2.nrfVPC.privateDBSubnetA,
-            prod.aws.euWest2.nrfVPC.privateDBSubnetB,
-            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
-            prod.aws.euWest2.nrfVPC.publicSubnetA.natGwA,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.invoiceRequestorSvc,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.reconciliationSvc,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.impactWorkerSvc,
-            prod.aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB
+            prod.aws.euWest2.**
 
         include * -> *
     }
 
     deployment view networkArchitecture {
         title 'Network Architecture'
-        description 'Shows AWS cloud boundary with external GOV.UK services and complete network topology'
+        description 'Network topology with VPCs, subnets, WAF, and connectivity components'
 
         include
             prod.govUKPay,
@@ -670,75 +652,49 @@ views {
             prod.aws.euWest2.awsShield,
             prod.aws.euWest2.cloudFront,
             prod.aws.euWest2.tgw,
-            prod.aws.euWest2.connectivityVPC,
-            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetA,
-            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetB,
-            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetA.connectivityWafA,
-            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetB.connectivityWafB,
-            prod.aws.euWest2.nrfVPC,
-            prod.aws.euWest2.nrfVPC.publicSubnetA,
-            prod.aws.euWest2.nrfVPC.publicSubnetB,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetB,
-            prod.aws.euWest2.nrfVPC.privateDBSubnetA,
-            prod.aws.euWest2.nrfVPC.privateDBSubnetB,
-            prod.aws.euWest2.nrfVPC.publicSubnetA.publicWafA,
-            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
-            prod.aws.euWest2.nrfVPC.publicSubnetA.natGwA,
-            prod.aws.euWest2.nrfVPC.publicSubnetB.publicWafB,
-            prod.aws.euWest2.nrfVPC.publicSubnetB.natGwB,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster
+            prod.aws.euWest2.connectivityVPC.**,
+            prod.aws.euWest2.nrfVPC.**
 
         include * -> *
-    }
-
-    deployment view prodInfrastructure {
-        title 'Production Infrastructure - Complete'
-        description 'Detailed view of all AWS infrastructure components within AWS cloud boundary'
-
-        include
-            prod.aws,
-            prod.aws.euWest2.cloudFront,
-            prod.aws.euWest2.ecrRegistry,
-            prod.aws.euWest2.secretsManager,
-            prod.aws.euWest2.kmsKey,
-            prod.aws.euWest2.tenantStorage,
-            prod.aws.euWest2.quarantineStorage,
-            prod.aws.euWest2.impactQueue,
-            prod.aws.euWest2.impactDLQ,
-            prod.aws.euWest2.nrfVPC.**
     }
 
     deployment view securityArchitecture {
         title 'Security Architecture'
-        description 'Secrets management and encryption architecture with KMS'
+        description 'Security infrastructure including WAF, secrets management, encryption, and data storage components'
 
         include
             prod.aws.euWest2.secretsManager,
             prod.aws.euWest2.kmsKey,
+            prod.aws.euWest2.cloudFront,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicWafA,
+            prod.aws.euWest2.nrfVPC.publicSubnetB.publicWafB,
             prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
             prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster,
             prod.aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.frontendRedisCache,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.verificationRedisCache,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.caseManagementRedisCache,
             prod.aws.euWest2.tenantStorage,
-            prod.aws.euWest2.quarantineStorage
+            prod.aws.euWest2.quarantineStorage,
+            prod.aws.euWest2.impactQueue,
+            prod.aws.euWest2.impactDLQ
 
         include * -> *
     }
 
-    deployment view frontendDeployment {
-        title 'Frontend Services Deployment'
-        description 'Shows AWS cloud boundary with external services (GOV.UK Pay, Notify, SOP FTP) connecting to AWS'
+    deployment view userFacingServices {
+        title 'User-Facing Services'
+        description 'Public web services (Frontend, Verification, Case Management) with user access, Redis caching, and external integrations'
 
         include
+            prod.planningDevelopers,
+            prod.lpaAgents,
+            prod.nrfOperations,
             prod.govUKPay,
             prod.govUKNotify,
             prod.sopFTPServer,
-            prod.aws,
             prod.aws.euWest2.route53,
-            prod.aws.euWest2.awsShield,
             prod.aws.euWest2.cloudFront,
-            prod.aws.euWest2.tgw,
-            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetA.connectivityWafA,
             prod.aws.euWest2.nrfVPC.publicSubnetA.publicWafA,
             prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
             prod.aws.euWest2.nrfVPC.publicSubnetA.natGwA,
@@ -746,13 +702,12 @@ views {
             prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.verificationSvc,
             prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.caseManagementSvc,
             prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.uploaderSvc,
-            prod.aws.euWest2.secretsManager,
-            prod.aws.euWest2.tenantStorage,
-            prod.aws.euWest2.quarantineStorage,
-            prod.aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB,
             prod.aws.euWest2.nrfVPC.privateAppSubnetA.frontendRedisCache,
             prod.aws.euWest2.nrfVPC.privateAppSubnetA.verificationRedisCache,
             prod.aws.euWest2.nrfVPC.privateAppSubnetA.caseManagementRedisCache,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB,
+            prod.aws.euWest2.tenantStorage,
+            prod.aws.euWest2.quarantineStorage,
             prod.aws.euWest2.impactQueue
 
         include * -> *
@@ -771,27 +726,6 @@ views {
         include * -> *
     }
 
-    deployment view publicServicesView {
-        title 'Public-Facing Services (Node.js)'
-        description 'Node.js web services with Redis caching and user access patterns'
-
-        include
-            prod.planningDevelopers,
-            prod.lpaAgents,
-            prod.nrfOperations,
-            prod.aws.euWest2.cloudFront,
-            prod.aws.euWest2.nrfVPC.publicSubnetA.publicWafA,
-            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.verificationSvc,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.caseManagementSvc,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.frontendRedisCache,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.verificationRedisCache,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.caseManagementRedisCache
-
-        include * -> *
-    }
-
     deployment view privateServicesView {
         title 'Backend Services (Python + Node.js Scheduled)'
         description 'Python API services accessed via direct service calls and Node.js scheduled tasks triggered by EventBridge'
@@ -800,37 +734,5 @@ views {
             prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.*
 
         include * -> *
-    }
-
-    deployment view wafArchitecture {
-        title 'WAF Protection Architecture'
-        description 'Web Application Firewall protection for public-facing services'
-
-        include
-            prod.aws.euWest2.cloudFront,
-            prod.aws.euWest2.nrfVPC.publicSubnetA.publicWafA,
-            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
-            prod.aws.euWest2.nrfVPC.publicSubnetB.publicWafB,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster
-
-        include * -> *
-    }
-
-    deployment view dataStorageView {
-        title 'Data Storage Architecture'
-        description 'Database, cache, and storage components with subnet placement'
-
-        include
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA,
-            prod.aws.euWest2.nrfVPC.privateDBSubnetA,
-            prod.aws.euWest2.nrfVPC.privateDBSubnetB,
-            prod.aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.frontendRedisCache,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.verificationRedisCache,
-            prod.aws.euWest2.nrfVPC.privateAppSubnetA.caseManagementRedisCache,
-            prod.aws.euWest2.tenantStorage,
-            prod.aws.euWest2.quarantineStorage,
-            prod.aws.euWest2.impactQueue,
-            prod.aws.euWest2.impactDLQ
     }
 }
