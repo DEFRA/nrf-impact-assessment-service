@@ -69,7 +69,7 @@ model {
     }
 
     govUKPay = system 'GOV.UK Pay' {
-        description 'GOV.UK Pay service for processing credit card payments under £10,000'
+        description 'GOV.UK Pay service for processing credit card payments via session redirect'
         technology 'GOV.UK Platform as a Service'
         style {
             color secondary
@@ -153,6 +153,8 @@ model {
             }
 
             developer -> nrfFrontendService 'Submits planning application details'
+            nrfFrontendService -> govUKNotify 'Sends magic link for system access'
+            govUKNotify -> developer 'Delivers magic link email'
             nrfFrontendService -> frontendRedisCache 'Caches user sessions and form data'
             nrfFrontendService -> cdpUploaderService 'Initiates file upload request'
             cdpUploaderService -> quarantineBucket 'Uploads file to quarantine'
@@ -161,8 +163,8 @@ model {
             cdpUploaderService -> quarantineBucket 'Deletes infected files'
             nrfFrontendService -> postgresDatabase 'Saves planning application details'
             nrfFrontendService -> impactAssessmentQueue 'Pushes application to queue for processing'
-            nrfFrontendService -> govUKPay 'Initiates payment request (credit card < £10k)'
-            govUKPay -> developer 'Processes payment via credit card'
+            nrfFrontendService -> govUKPay 'Redirects session for credit card payment (< £10k)'
+            developer -> govUKPay 'Submits card details for payment'
         }
 
         nrfImpactAssessmentService = system 'Impact Assessment Service' {
@@ -212,12 +214,14 @@ model {
             }
 
             lpaAgent -> verificationService 'Reviews and verifies planning applications'
+            verificationService -> govUKNotify 'Sends magic link for system access'
+            govUKNotify -> lpaAgent 'Delivers magic link email'
             verificationService -> verificationRedisCache 'Caches agent sessions and verification data'
             verificationService -> postgresDatabase 'Reads application details for verification'
         }
 
         nrfInvoiceRequestorService = system 'Invoice Requestor Service' {
-            description 'Service generating and submitting invoices to the financial system for payments over £10k'
+            description 'Service generating invoices for all NRF levy payments and submitting to SOP for processing'
             style {
                 color green
             }
@@ -230,9 +234,9 @@ model {
 
             invoiceRequestorService -> postgresDatabase 'Reads verified application data'
             invoiceRequestorService -> sopFTPServer 'Sends invoice and customer details via FTP'
-            sopFTPServer -> SOP 'Transfers data for invoice generation'
+            sopFTPServer -> SOP 'Transfers invoice data for processing'
             ssclAdmin -> SOP 'Processes and approves invoices'
-            SOP -> developer 'Sends invoice for bank transfer payment'
+            SOP -> developer 'Sends invoice (< £10k: with GOV.UK Pay link, > £10k: for bank transfer)'
         }
 
         nrfReconciliationService = system 'Reconciliation Service' {
@@ -284,6 +288,29 @@ model {
 }
 
 views {
+    view systemContext {
+        title 'NRF System Context'
+        description 'High-level view showing key actors, NRF platform, and external system integrations'
+        include
+            developer,
+            lpaAgent,
+            nrfOperations,
+            ssclAdmin,
+            payForNRFService,
+            govUKNotify,
+            govUKPay,
+            SOP,
+            sopFTPServer,
+            customerBank,
+            developer -> *,
+            lpaAgent -> *,
+            nrfOperations -> *,
+            ssclAdmin -> *,
+            payForNRFService -> *,
+            sopFTPServer -> *,
+            SOP -> *
+    }
+
     view index {
         title 'NRF Complete System Overview'
         description 'Complete system architecture showing all services, actors, and integrations'
@@ -292,8 +319,8 @@ views {
 
     view frontendService {
         title 'NRF Frontend Service'
-        description 'Developer-facing service for application submission, file upload, and payment initiation'
-        include developer, nrfFrontendService.*, postgresDatabase, nrfImpactAssessmentService.impactAssessmentQueue, govUKPay
+        description 'Developer-facing service for application submission, magic link authentication, file upload, and payment initiation'
+        include developer, nrfFrontendService.*, postgresDatabase, nrfImpactAssessmentService.impactAssessmentQueue, govUKNotify, govUKPay
     }
 
     view impactAssessmentService {
@@ -304,19 +331,19 @@ views {
 
     view verificationService {
         title 'NRF Verification Service'
-        description 'LPA agent portal for application verification and approval'
-        include lpaAgent, nrfVerificationService.*, postgresDatabase
+        description 'LPA agent portal for application verification and approval with magic link authentication'
+        include lpaAgent, nrfVerificationService.*, postgresDatabase, govUKNotify
     }
 
     view invoiceRequestorService {
         title 'NRF Invoice Requestor Service'
-        description 'Invoice generation and submission to financial system for large payments'
+        description 'Invoice generation and submission to SOP for all NRF levy payments'
         include nrfInvoiceRequestorService.*, postgresDatabase, sopFTPServer, SOP, ssclAdmin, developer
     }
 
     view invoiceReconciliationService {
         title 'NRF Invoice Reconciliation Service'
-        description 'Bank payment reconciliation and application completion workflow'
+        description 'Bank transfer payment reconciliation and application completion workflow'
         include nrfReconciliationService.*, postgresDatabase, sopFTPServer, SOP, developer, customerBank, govUKNotify
     }
 
