@@ -1,12 +1,81 @@
 specification {
     deploymentNode environment
+    deploymentNode cloud {
+        notation 'Cloud Provider'
+        technology 'AWS'
+        style {
+            color blue
+            opacity 30%
+        }
+    }
     deploymentNode zone
+    deploymentNode actor {
+        notation 'User/Actor'
+        style {
+            shape person
+            color gray
+        }
+    }
+    deploymentNode cicd {
+        notation 'CI/CD Platform'
+        style {
+            color amber
+        }
+    }
+    deploymentNode gitRepo {
+        notation 'Source Repository'
+        technology 'Git Repository'
+        style {
+            color slate
+            icon https://icons.terrastruct.com/dev%2Fgithub.svg
+        }
+    }
+    deploymentNode cicdPipeline {
+        notation 'CI/CD Pipeline'
+        technology 'GitHub Actions'
+        style {
+            color amber
+            icon https://icons.terrastruct.com/dev%2Fgithub.svg
+        }
+    }
     deploymentNode vpc {
         notation 'Virtual Private Cloud'
         technology 'AWS VPC'
         style {
             color blue
-            icon https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FAmazon-VPC_VPN-Gateway_light-bg.svg
+            icon https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FAmazon-VPC.svg
+        }
+    }
+    deploymentNode subnet {
+        notation 'Network Subnet'
+        technology 'VPC Subnet'
+        style {
+            color sky
+            opacity 50%
+        }
+    }
+    deploymentNode loadBalancer {
+        notation 'Load Balancer'
+        technology 'AWS ALB'
+        style {
+            color amber
+            icon https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FElastic-Load-Balancing.svg
+        }
+    }
+    deploymentNode waf {
+        notation 'Web Application Firewall'
+        technology 'AWS WAF'
+        style {
+            color red
+            icon https://icons.terrastruct.com/aws%2FSecurity%2C%20Identity%2C%20&%20Compliance%2FAWS-WAF.svg
+        }
+    }
+    deploymentNode natGateway {
+        notation 'NAT Gateway'
+        technology 'AWS NAT Gateway'
+        style {
+            color blue
+            icon https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FAmazon-VPC_NAT-Gateway.svg
         }
     }
     deploymentNode ecsCluster {
@@ -14,7 +83,7 @@ specification {
         technology 'AWS ECS Cluster'
         style {
             color green
-            icon https://icons.terrastruct.com/aws%2FContainer%2FAmazon-Elastic-Container-Service-ECS_light-bg.svg
+            icon https://icons.terrastruct.com/aws%2FCompute%2FAmazon-Elastic-Container-Service.svg
         }
     }
     deploymentNode ecsService {
@@ -22,15 +91,15 @@ specification {
         technology 'AWS ECS Service'
         style {
             color green
-            icon https://icons.terrastruct.com/aws%2FContainer%2FAmazon-Elastic-Container-Service-ECS_Service_light-bg.svg
+            icon https://icons.terrastruct.com/aws%2FCompute%2FAmazon-ECS_Service.svg
         }
     }
     deploymentNode ecr {
         notation 'Container Registry'
         technology 'AWS ECR'
         style {
-            color blue
-            icon https://icons.terrastruct.com/aws%2FContainer%2FAmazon-Elastic-Container-Registry-ECR_light-bg.svg
+            color indigo
+            icon https://icons.terrastruct.com/aws%2FCompute%2FAmazon-EC2-Container-Registry.svg
         }
     }
     deploymentNode rds {
@@ -38,7 +107,7 @@ specification {
         technology 'AWS RDS Aurora'
         style {
             color green
-            icon https://icons.terrastruct.com/aws%2FDatabase%2FAmazon-Aurora_light-bg.svg
+            icon https://icons.terrastruct.com/aws%2FDatabase%2FAmazon-Aurora.svg
         }
     }
     deploymentNode s3 {
@@ -46,7 +115,7 @@ specification {
         technology 'AWS S3'
         style {
             color indigo
-            icon https://icons.terrastruct.com/aws%2FStorage%2FAmazon-Simple-Storage-Service-S3_light-bg.svg
+            icon https://icons.terrastruct.com/aws%2FStorage%2FAmazon-Simple-Storage-Service-S3.svg
         }
     }
     deploymentNode sqs {
@@ -54,7 +123,77 @@ specification {
         technology 'AWS SQS'
         style {
             color indigo
-            icon https://icons.terrastruct.com/aws%2FApplication%20Integration%2FAmazon-Simple-Queue-Service-SQS_light-bg.svg
+            icon https://icons.terrastruct.com/aws%2FApplication%20Integration%2FAmazon-Simple-Queue-Service.svg
+        }
+    }
+    deploymentNode cdn {
+        notation 'Content Delivery Network'
+        technology 'AWS CloudFront'
+        style {
+            color amber
+            icon https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FAmazon-CloudFront.svg
+        }
+    }
+    deploymentNode secretsManager {
+        notation 'Secrets Manager'
+        technology 'AWS Secrets Manager'
+        style {
+            color red
+            icon https://icons.terrastruct.com/aws%2FSecurity%2C%20Identity%2C%20&%20Compliance%2FAWS-Secrets-Manager.svg
+        }
+    }
+    deploymentNode kms {
+        notation 'Key Management'
+        technology 'AWS KMS'
+        style {
+            color red
+            icon https://icons.terrastruct.com/aws%2FSecurity%2C%20Identity%2C%20&%20Compliance%2FAWS-Key-Management-Service.svg
+        }
+    }
+    deploymentNode externalSystem {
+        notation 'External System'
+        style {
+            color secondary
+        }
+    }
+    deploymentNode ftpServer {
+        notation 'FTP Server'
+        technology 'FTP/SFTP'
+        style {
+            color red
+            icon https://icons.terrastruct.com/aws%2FMigration%20&%20Transfer%2FAWS-Transfer-for-FTP_Resource-Icon_light-bg.svg
+        }
+    }
+    deploymentNode transitGateway {
+        notation 'Transit Gateway'
+        technology 'AWS Transit Gateway'
+        style {
+            color blue
+            icon https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FAWS-Transit-Gateway.svg
+        }
+    }
+    deploymentNode dns {
+        notation 'DNS Service'
+        technology 'AWS Route 53'
+        style {
+            color amber
+            icon https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FAmazon-Route-53.svg
+        }
+    }
+    deploymentNode shield {
+        notation 'DDoS Protection'
+        technology 'AWS Shield'
+        style {
+            color red
+            icon https://icons.terrastruct.com/aws%2FSecurity%2C%20Identity%2C%20&%20Compliance%2FAWS-Shield.svg
+        }
+    }
+    deploymentNode redis {
+        notation 'Cache Cluster'
+        technology 'AWS ElastiCache Redis'
+        style {
+            color red
+            icon https://icons.terrastruct.com/aws%2FDatabase%2FAmazon-ElastiCache_For-Redis_light-bg.svg
         }
     }
 }
@@ -67,138 +206,554 @@ deployment {
             Contains all microservices, databases, and supporting infrastructure.
         '''
 
-        zone euWest2 'EU West 2 (London)' {
-            summary 'AWS eu-west-2 region'
+        actor planningDevelopers 'Planning Developers' {
+            summary 'Developers submitting planning applications and paying NRF levy'
+            technology 'Web Browser'
+        }
 
-            ecr ecrRegistry 'ECR Registry' {
-                summary 'Container image registry for all microservices'
+        actor lpaAgents 'LPA Planning Agents' {
+            summary 'Local Planning Authority agents verifying planning application details'
+            technology 'Web Browser'
+        }
+
+        actor nrfOperations 'NRF Operations Team' {
+            summary 'Nature Recovery Fund operations team managing cases and reconciliation'
+            technology 'Web Browser'
+        }
+
+        actor softwareEngineers 'Software Engineers' {
+            summary 'Engineering team committing code and triggering deployments'
+            technology 'Git Client / IDE'
+        }
+
+        cicd github 'GitHub' {
+            summary 'Source code management and CI/CD platform'
+
+            gitRepo nrfRepo 'NRF Service Repository' {
+                summary 'Git repository containing NRF service source code'
+                technology 'GitHub Repository'
             }
 
-            vpc nrfVPC 'NRF VPC' {
-                summary 'Virtual Private Cloud for NRF services'
-                technology 'AWS VPC with public and private subnets'
+            cicdPipeline githubActions 'GitHub Actions' {
+                summary 'CI/CD pipelines for building, testing, and deploying NRF services'
+                technology 'GitHub Actions Workflows'
+            }
+        }
 
-                // Database
-                rds auroraDB 'Aurora PostgreSQL' {
-                    summary 'Primary database for NRF services'
-                    technology 'AWS RDS Aurora PostgreSQL'
-                    instanceOf payForNRFService.postgresDatabase {
-                        title 'NRF PostgreSQL Database'
-                    }
+        // External Government Services
+        externalSystem govUKPay 'GOV.UK Pay' {
+            summary 'Government payment service for credit card transactions under £10,000'
+            technology 'GOV.UK Platform as a Service'
+        }
+
+        externalSystem govUKNotify 'GOV.UK Notify' {
+            summary 'Government notification service for sending emails and SMS'
+            technology 'GOV.UK Platform as a Service'
+        }
+
+        ftpServer sopFTPServer 'SOP FTP Server' {
+            summary 'FTP server for exchanging invoice and payment data with Oracle Fusion'
+            technology 'AWS Transfer for FTP'
+        }
+
+        cloud aws 'Amazon Web Services (AWS)' {
+            summary 'AWS cloud infrastructure hosting all NRF services'
+
+            zone euWest2 'EU West 2 (London)' {
+                summary 'AWS eu-west-2 region'
+
+                dns route53 'Route 53' {
+                    summary 'DNS service routing traffic to NRF applications'
+                    technology 'AWS Route 53 Hosted Zone'
                 }
 
-                // S3 Buckets
+                shield awsShield 'AWS Shield Advanced' {
+                    summary 'DDoS protection for CloudFront and application load balancers'
+                    technology 'AWS Shield Advanced'
+                }
+
+                transitGateway tgw 'Transit Gateway' {
+                    summary 'Hub for connecting Connectivity VPC and NRF VPC'
+                    technology 'AWS Transit Gateway'
+                }
+
+                cdn cloudFront 'CloudFront Distribution' {
+                    summary 'CDN for delivering static assets and caching with Shield protection'
+                    technology 'AWS CloudFront - Global Edge Locations'
+                }
+
+                secretsManager secretsManager 'Secrets Manager' {
+                    summary 'Secure storage for database credentials, API keys, and secrets'
+                    technology 'AWS Secrets Manager'
+                }
+
+                kms kmsKey 'KMS Key' {
+                    summary 'Customer-managed encryption key for encrypting data at rest'
+                    technology 'AWS KMS Customer Managed Key'
+                }
+
+                ecr ecrRegistry 'ECR Registry' {
+                    summary 'Container image registry for all microservices'
+                }
+
+                // AWS Managed Services (accessed via VPC Endpoints)
                 s3 tenantStorage 'Tenant Bucket' {
-                    summary 'Storage for verified uploaded files'
+                    summary 'S3 bucket for verified uploaded files (accessed via VPC endpoint)'
+                    technology 'AWS S3 with versioning and encryption'
                     instanceOf payForNRFService.nrfFrontendService.tenantBucket
                 }
 
                 s3 quarantineStorage 'Quarantine Bucket' {
-                    summary 'Temporary storage for files awaiting virus scan'
+                    summary 'S3 bucket for files awaiting virus scan (accessed via VPC endpoint)'
+                    technology 'AWS S3 with lifecycle policies'
                     instanceOf payForNRFService.nrfFrontendService.quarantineBucket
                 }
 
-                // SQS Queues
                 sqs impactQueue 'Impact Assessment Queue' {
-                    summary 'Queue for processing impact assessments'
+                    summary 'SQS queue for processing impact assessments (accessed via VPC endpoint)'
+                    technology 'AWS SQS Standard Queue'
                     instanceOf payForNRFService.nrfImpactAssessmentService.impactAssessmentQueue
                 }
 
                 sqs impactDLQ 'Impact Assessment DLQ' {
                     summary 'Dead letter queue for failed impact assessments'
+                    technology 'AWS SQS Standard Queue'
                     instanceOf payForNRFService.nrfImpactAssessmentService.impactAssessmentDLQueue
                 }
 
-                // ECS Cluster
-                ecsCluster nrfCluster 'NRF ECS Cluster' {
-                    summary 'ECS cluster hosting all NRF microservices'
-                    technology 'AWS ECS Fargate'
+                vpc connectivityVPC 'Connectivity VPC' {
+                    summary 'Shared connectivity hub VPC with Transit Gateway attachment'
+                    technology 'AWS VPC (10.1.0.0/16) with multi-AZ deployment'
 
-                    // Frontend Services
-                    ecsService frontendSvc 'Frontend Service' {
-                        summary 'Web frontend for developers'
-                        technology 'ECS Fargate Service - 2 tasks'
-                        instanceOf payForNRFService.nrfFrontendService.nrfFrontendService
+                    subnet connectivityPublicSubnetA 'Connectivity Public Subnet AZ-A' {
+                        summary 'Public subnet for ingress traffic inspection and routing'
+                        technology 'VPC Subnet (10.1.1.0/24)'
+
+                        waf connectivityWafA 'Connectivity WAF AZ-A' {
+                            summary 'Web Application Firewall for traffic inspection'
+                            technology 'AWS WAF with managed rule sets'
+                        }
                     }
 
-                    ecsService uploaderSvc 'CDP Uploader Service' {
-                        summary 'File upload and virus scanning service'
-                        technology 'ECS Fargate Service - 2 tasks'
-                        instanceOf payForNRFService.nrfFrontendService.cdpUploaderService
+                    subnet connectivityPublicSubnetB 'Connectivity Public Subnet AZ-B' {
+                        summary 'Public subnet for ingress traffic inspection and routing (AZ-B)'
+                        technology 'VPC Subnet (10.1.2.0/24)'
+
+                        waf connectivityWafB 'Connectivity WAF AZ-B' {
+                            summary 'Web Application Firewall for traffic inspection (AZ-B)'
+                            technology 'AWS WAF with managed rule sets'
+                        }
+                    }
+                }
+
+                vpc nrfVPC 'NRF VPC' {
+                    summary 'Virtual Private Cloud for NRF services'
+                    technology 'AWS VPC (10.0.0.0/16) with multi-AZ deployment'
+
+                    // Public Subnets
+                    subnet publicSubnetA 'Public Subnet AZ-A' {
+                        summary 'Public subnet in Availability Zone A for internet-facing services'
+                        technology 'VPC Subnet (10.0.1.0/24)'
+
+                        waf publicWafA 'Public WAF AZ-A' {
+                            summary 'Web Application Firewall protecting public ALB'
+                            technology 'AWS WAF with managed rule sets'
+                        }
+
+                        loadBalancer publicALB 'Public Application Load Balancer' {
+                            summary 'Internet-facing ALB for public web services'
+                            technology 'AWS Application Load Balancer (Internet-facing)'
+                        }
+
+                        natGateway natGwA 'NAT Gateway AZ-A' {
+                            summary 'NAT Gateway for private subnet outbound traffic'
+                        }
                     }
 
-                    ecsService clamAVSvc 'ClamAV Scanner' {
-                        summary 'Antivirus scanner for uploaded files'
-                        technology 'ECS Fargate Service - 2 tasks'
-                        instanceOf payForNRFService.nrfFrontendService.clamAVScanner
+                    subnet publicSubnetB 'Public Subnet AZ-B' {
+                        summary 'Public subnet in Availability Zone B for internet-facing services'
+                        technology 'VPC Subnet (10.0.2.0/24)'
+
+                        waf publicWafB 'Public WAF AZ-B' {
+                            summary 'Web Application Firewall protecting public subnet'
+                            technology 'AWS WAF with managed rule sets'
+                        }
+
+                        natGateway natGwB 'NAT Gateway AZ-B' {
+                            summary 'NAT Gateway for private subnet outbound traffic'
+                        }
                     }
 
-                    // Impact Assessment Service
-                    ecsService impactWorkerSvc 'Impact Assessment Worker' {
-                        summary 'Worker service for calculating impact assessments'
-                        technology 'ECS Fargate Service - 2 tasks'
-                        instanceOf payForNRFService.nrfImpactAssessmentService.impactAssessmentWorker
+                    // Private Subnets for Application
+                    subnet privateAppSubnetA 'Private App Subnet AZ-A' {
+                        summary 'Private subnet for all application services and Redis caches in AZ-A'
+                        technology 'VPC Subnet (10.0.11.0/24)'
+
+                        ecsCluster nrfPrivateCluster 'NRF Private Fargate Cluster' {
+                            summary 'ECS Fargate cluster hosting all Node.js web services, Python workers, and scheduled services'
+                            technology 'AWS ECS Fargate - Multi-AZ'
+
+                            ecsService frontendSvc 'Frontend Service' {
+                                summary 'Node.js web frontend for developers'
+                                technology 'Node.js - ECS Fargate Service (2 tasks)'
+                                instanceOf payForNRFService.nrfFrontendService.nrfFrontendService
+                            }
+
+                            ecsService verificationSvc 'Verification Service' {
+                                summary 'Node.js service for LPA agents to verify applications'
+                                technology 'Node.js - ECS Fargate Service (2 tasks)'
+                                instanceOf payForNRFService.nrfVerificationService.verificationService
+                            }
+
+                            ecsService caseManagementSvc 'Case Management Service' {
+                                summary 'Node.js service for NRF operations to manage cases'
+                                technology 'Node.js - ECS Fargate Service (2 tasks)'
+                                instanceOf payForNRFService.nrfCaseManagementService.caseManagementService
+                            }
+
+                            ecsService uploaderSvc 'CDP Uploader Service' {
+                                summary 'File upload and virus scanning service'
+                                technology 'Python - ECS Fargate Service (2 tasks)'
+                                instanceOf payForNRFService.nrfFrontendService.cdpUploaderService
+                            }
+
+                            ecsService clamAVSvc 'ClamAV Scanner' {
+                                summary 'Antivirus scanner for uploaded files'
+                                technology 'Python - ECS Fargate Service (2 tasks)'
+                                instanceOf payForNRFService.nrfFrontendService.clamAVScanner
+                            }
+
+                            ecsService impactWorkerSvc 'Impact Assessment Worker' {
+                                summary 'Worker service for calculating impact assessments'
+                                technology 'Python - ECS Fargate Service (2 tasks)'
+                                instanceOf payForNRFService.nrfImpactAssessmentService.impactAssessmentWorker
+                            }
+
+                            ecsService invoiceRequestorSvc 'Invoice Requestor Service' {
+                                summary 'Scheduled service for generating and requesting invoices from SOP'
+                                technology 'Node.js - ECS Fargate Scheduled Task (EventBridge)'
+                                instanceOf payForNRFService.nrfInvoiceRequestorService.invoiceRequestorService
+                            }
+
+                            ecsService reconciliationSvc 'Reconciliation Service' {
+                                summary 'Scheduled service for reconciling bank payments with invoices'
+                                technology 'Node.js - ECS Fargate Scheduled Task (EventBridge)'
+                                instanceOf payForNRFService.nrfReconciliationService.invoiceReconciliationService
+                            }
+                        }
+
+                        redis frontendRedisCache 'Frontend Redis Cache' {
+                            summary 'Redis cache for frontend service session management and caching'
+                            technology 'AWS ElastiCache Redis 7.x (Multi-AZ with replication)'
+                        }
+
+                        redis verificationRedisCache 'Verification Redis Cache' {
+                            summary 'Redis cache for verification service session management and caching'
+                            technology 'AWS ElastiCache Redis 7.x (Multi-AZ with replication)'
+                        }
+
+                        redis caseManagementRedisCache 'Case Management Redis Cache' {
+                            summary 'Redis cache for case management service session management and caching'
+                            technology 'AWS ElastiCache Redis 7.x (Multi-AZ with replication)'
+                        }
                     }
 
-                    // Verification Service
-                    ecsService verificationSvc 'Verification Service' {
-                        summary 'Service for LPA agents to verify applications'
-                        technology 'ECS Fargate Service - 2 tasks'
-                        instanceOf payForNRFService.nrfVerificationService.verificationService
+                    subnet privateAppSubnetB 'Private App Subnet AZ-B' {
+                        summary 'Private subnet for backend services in AZ-B'
+                        technology 'VPC Subnet (10.0.12.0/24)'
                     }
 
-                    // Invoice Services
-                    ecsService invoiceRequestorSvc 'Invoice Requestor Service' {
-                        summary 'Service for requesting invoices from SOP'
-                        technology 'ECS Fargate Service - 1 task'
-                        instanceOf payForNRFService.nrfInvoiceRequestorService.invoiceRequestorService
+                    // Private Subnets for Database
+                    subnet privateDBSubnetA 'Private DB Subnet AZ-A' {
+                        summary 'Private subnet for database in AZ-A'
+                        technology 'VPC Subnet (10.0.21.0/24)'
+
+                        rds auroraDB 'Aurora PostgreSQL' {
+                            summary 'Primary database cluster for NRF services (Multi-AZ)'
+                            technology 'AWS RDS Aurora PostgreSQL 15.x'
+                            instanceOf payForNRFService.postgresDatabase {
+                                title 'NRF PostgreSQL Database'
+                            }
+                        }
                     }
 
-                    ecsService reconciliationSvc 'Reconciliation Service' {
-                        summary 'Service for reconciling payments'
-                        technology 'ECS Fargate Service - 1 task'
-                        instanceOf payForNRFService.nrfReconciliationService.invoiceReconciliationService
-                    }
-
-                    // Case Management Service
-                    ecsService caseManagementSvc 'Case Management Service' {
-                        summary 'Service for NRF operations to manage cases'
-                        technology 'ECS Fargate Service - 2 tasks'
-                        instanceOf payForNRFService.nrfCaseManagementService.caseManagementService
+                    subnet privateDBSubnetB 'Private DB Subnet AZ-B' {
+                        summary 'Private subnet for database replicas in AZ-B'
+                        technology 'VPC Subnet (10.0.22.0/24)'
                     }
                 }
             }
         }
+        
+        // Actor Interactions - End Users to Route 53 (via CloudFront)
+        planningDevelopers -> aws.euWest2.route53 'Accesses nrf.defra.gov.uk to get estimates and pay NRF levy'
+        lpaAgents -> aws.euWest2.route53 'Accesses nrf.defra.gov.uk to verify application details'
+        nrfOperations -> aws.euWest2.route53 'Accesses nrf.defra.gov.uk to reconcile applications'
+        
+        // Software Engineers - Server Access via Transit Gateway
+        softwareEngineers -> aws.euWest2.route53 'Accesses servers for monitoring, debugging, and system management'
+        softwareEngineers -> github.nrfRepo 'Commits code to trigger deployments'
+        
+        // CI/CD Pipeline Relationships
+        github.githubActions -> aws.euWest2.ecrRegistry 'Builds and pushes container images'
+        aws.euWest2.ecrRegistry -> aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster 'Pulls container images for all services'
+        
+        // DNS and DDoS Protection (for all traffic)
+        aws.euWest2.route53 -> euWest2.awsShield 'DNS resolves to Shield-protected endpoints'
+        
+        // End User Traffic - CloudFront directly to NRF VPC (bypasses Transit Gateway)
+        aws.euWest2.awsShield -> euWest2.cloudFront 'Protects CloudFront from DDoS attacks'
+        aws.euWest2.cloudFront -> euWest2.nrfVPC.publicSubnetA.publicWafA 'Routes end user traffic directly to NRF VPC'
+        
+        // Software Engineer Traffic - Route 53 via Shield and Transit Gateway to NRF VPC
+        aws.euWest2.awsShield -> euWest2.tgw 'Protects and routes software engineer server access through Transit Gateway'
+        aws.euWest2.tgw -> euWest2.connectivityVPC.connectivityPublicSubnetA.connectivityWafA 'Forwards to Connectivity VPC for inspection'
+        
+        // Software Engineer Access to Public Subnet (via Transit Gateway)
+        aws.euWest2.connectivityVPC.connectivityPublicSubnetA.connectivityWafA -> euWest2.nrfVPC.publicSubnetA.publicWafA 'Routes to public services after filtering'
+        
+        // Software Engineer Access to Private Subnet (via Transit Gateway)
+        aws.euWest2.connectivityVPC.connectivityPublicSubnetA.connectivityWafA -> euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster 'Routes to backend services after filtering'
+        
+        // Public WAF to Public ALB
+        aws.euWest2.nrfVPC.publicSubnetA.publicWafA -> euWest2.nrfVPC.publicSubnetA.publicALB 'Protects and filters traffic'
+        
+        // Public ALB to Web Services in Private Subnet (Node.js)
+        aws.euWest2.nrfVPC.publicSubnetA.publicALB -> euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc 'Routes traffic to Frontend'
+        aws.euWest2.nrfVPC.publicSubnetA.publicALB -> euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.verificationSvc 'Routes traffic to Verification'
+        aws.euWest2.nrfVPC.publicSubnetA.publicALB -> euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.caseManagementSvc 'Routes traffic to Case Management'
+        
+        // Frontend Service to Backend Services (direct service-to-service)
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc -> euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.uploaderSvc 'Calls uploader service for file uploads'
+        
+        // Scheduled Services (Node.js) - Triggered by EventBridge, not HTTP
+        // invoiceRequestorSvc and reconciliationSvc run on schedule, not via HTTP/ALB
+        
+        // Web Services to Redis Caches (Session Management)
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc -> euWest2.nrfVPC.privateAppSubnetA.frontendRedisCache 'Caches sessions and application data'
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.verificationSvc -> euWest2.nrfVPC.privateAppSubnetA.verificationRedisCache 'Caches sessions and verification data'
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.caseManagementSvc -> euWest2.nrfVPC.privateAppSubnetA.caseManagementRedisCache 'Caches sessions and case data'
+        
+        // NAT Gateway - Outbound Internet Traffic from Private Subnets
+        // Impact Worker to GOV.UK Notify (via NAT Gateway)
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.impactWorkerSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes outbound notifications through NAT'
+        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> govUKNotify 'Sends email notifications'
+        
+        // Invoice Requestor and Reconciliation to SOP FTP Server (via NAT Gateway)
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.invoiceRequestorSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes invoice data to SOP FTP through NAT'
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.reconciliationSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes reconciliation data to SOP FTP through NAT'
+        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> sopFTPServer 'Connects to SOP FTP server for invoice and payment data exchange'
+        
+        // Frontend Service to GOV.UK Pay (via NAT Gateway)
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc -> euWest2.nrfVPC.publicSubnetA.natGwA 'Routes payment requests through NAT'
+        aws.euWest2.nrfVPC.publicSubnetA.natGwA -> govUKPay 'Processes credit card payments under £10k'
+        
+        // Secrets Manager and KMS
+        aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster -> euWest2.secretsManager 'Retrieves application secrets'
+        aws.euWest2.secretsManager -> euWest2.kmsKey 'Encrypts secrets at rest'
+        
+        // ALB Encryption
+        aws.euWest2.nrfVPC.publicSubnetA.publicALB -> euWest2.kmsKey 'Encrypts logs and access logs with KMS'
+        
+        // Database Encryption
+        aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB -> euWest2.kmsKey 'Encrypts database at rest'
+        
+        // S3 Encryption
+        aws.euWest2.tenantStorage -> euWest2.kmsKey 'Encrypts objects at rest'
+        aws.euWest2.quarantineStorage -> euWest2.kmsKey 'Encrypts objects at rest'
     }
 }
 
 views {
+    deployment view userInteractions {
+        title 'User Interactions'
+        description 'Shows AWS cloud boundary: End users and engineers access AWS services; GitHub is external'
+
+        include
+            prod.planningDevelopers,
+            prod.lpaAgents,
+            prod.nrfOperations,
+            prod.softwareEngineers,
+            prod.github.nrfRepo,
+            prod.aws,
+            prod.aws.euWest2.route53,
+            prod.aws.euWest2.awsShield,
+            prod.aws.euWest2.ecrRegistry,
+            prod.aws.euWest2.cloudFront,
+            prod.aws.euWest2.tgw,
+            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetA.connectivityWafA,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicWafA,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.verificationSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.caseManagementSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.uploaderSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.frontendRedisCache,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.verificationRedisCache,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.caseManagementRedisCache
+
+        include * -> *
+    }
+
+    deployment view cicdPipeline {
+        title 'CI/CD Pipeline'
+        description 'Shows AWS cloud boundary: GitHub Actions (external) pushes images to AWS ECR (inside AWS)'
+
+        include
+            prod.softwareEngineers,
+            prod.github,
+            prod.github.nrfRepo,
+            prod.github.githubActions,
+            prod.aws,
+            prod.aws.euWest2.ecrRegistry,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster
+
+        include * -> *
+    }
+
     deployment view prodOverview {
         title 'Production Deployment Overview'
-        description 'High-level view of the production environment'
+        description 'High-level view showing AWS cloud boundary with external services (GitHub, GOV.UK)'
 
-        include prod.euWest2.*
+        include
+            prod.planningDevelopers,
+            prod.lpaAgents,
+            prod.nrfOperations,
+            prod.softwareEngineers,
+            prod.govUKPay,
+            prod.govUKNotify,
+            prod.sopFTPServer,
+            prod.github.nrfRepo,
+            prod.github.githubActions,
+            prod.aws,
+            prod.aws.euWest2.route53,
+            prod.aws.euWest2.awsShield,
+            prod.aws.euWest2.cloudFront,
+            prod.aws.euWest2.tgw,
+            prod.aws.euWest2.connectivityVPC,
+            prod.aws.euWest2.secretsManager,
+            prod.aws.euWest2.kmsKey,
+            prod.aws.euWest2.ecrRegistry,
+            prod.aws.euWest2.tenantStorage,
+            prod.aws.euWest2.quarantineStorage,
+            prod.aws.euWest2.impactQueue,
+            prod.aws.euWest2.impactDLQ,
+            prod.aws.euWest2.nrfVPC,
+            prod.aws.euWest2.nrfVPC.publicSubnetA,
+            prod.aws.euWest2.nrfVPC.publicSubnetB,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetB,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetA,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetB,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.natGwA,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.invoiceRequestorSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.reconciliationSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.impactWorkerSvc,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB
+
+        include * -> *
+    }
+
+    deployment view networkArchitecture {
+        title 'Network Architecture'
+        description 'Shows AWS cloud boundary with external GOV.UK services and complete network topology'
+
+        include
+            prod.govUKPay,
+            prod.govUKNotify,
+            prod.sopFTPServer,
+            prod.aws,
+            prod.aws.euWest2.route53,
+            prod.aws.euWest2.awsShield,
+            prod.aws.euWest2.cloudFront,
+            prod.aws.euWest2.tgw,
+            prod.aws.euWest2.connectivityVPC,
+            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetA,
+            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetB,
+            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetA.connectivityWafA,
+            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetB.connectivityWafB,
+            prod.aws.euWest2.nrfVPC,
+            prod.aws.euWest2.nrfVPC.publicSubnetA,
+            prod.aws.euWest2.nrfVPC.publicSubnetB,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetB,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetA,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetB,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicWafA,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.natGwA,
+            prod.aws.euWest2.nrfVPC.publicSubnetB.publicWafB,
+            prod.aws.euWest2.nrfVPC.publicSubnetB.natGwB,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster
+
+        include * -> *
     }
 
     deployment view prodInfrastructure {
-        title 'Production Infrastructure'
-        description 'Detailed view of AWS infrastructure components'
+        title 'Production Infrastructure - Complete'
+        description 'Detailed view of all AWS infrastructure components within AWS cloud boundary'
 
-        include prod.euWest2.nrfVPC.**
+        include
+            prod.aws,
+            prod.aws.euWest2.cloudFront,
+            prod.aws.euWest2.ecrRegistry,
+            prod.aws.euWest2.secretsManager,
+            prod.aws.euWest2.kmsKey,
+            prod.aws.euWest2.tenantStorage,
+            prod.aws.euWest2.quarantineStorage,
+            prod.aws.euWest2.impactQueue,
+            prod.aws.euWest2.impactDLQ,
+            prod.aws.euWest2.nrfVPC.**
+    }
+
+    deployment view securityArchitecture {
+        title 'Security Architecture'
+        description 'Secrets management and encryption architecture with KMS'
+
+        include
+            prod.aws.euWest2.secretsManager,
+            prod.aws.euWest2.kmsKey,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB,
+            prod.aws.euWest2.tenantStorage,
+            prod.aws.euWest2.quarantineStorage
+
+        include * -> *
     }
 
     deployment view frontendDeployment {
         title 'Frontend Services Deployment'
-        description 'Deployment architecture for frontend services'
+        description 'Shows AWS cloud boundary with external services (GOV.UK Pay, Notify, SOP FTP) connecting to AWS'
 
         include
-            prod.euWest2.nrfVPC.nrfCluster.frontendSvc,
-            prod.euWest2.nrfVPC.nrfCluster.uploaderSvc,
-            prod.euWest2.nrfVPC.nrfCluster.clamAVSvc,
-            prod.euWest2.nrfVPC.tenantStorage,
-            prod.euWest2.nrfVPC.quarantineStorage,
-            prod.euWest2.nrfVPC.auroraDB,
-            prod.euWest2.nrfVPC.impactQueue
+            prod.govUKPay,
+            prod.govUKNotify,
+            prod.sopFTPServer,
+            prod.aws,
+            prod.aws.euWest2.route53,
+            prod.aws.euWest2.awsShield,
+            prod.aws.euWest2.cloudFront,
+            prod.aws.euWest2.tgw,
+            prod.aws.euWest2.connectivityVPC.connectivityPublicSubnetA.connectivityWafA,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicWafA,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.natGwA,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.verificationSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.caseManagementSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.uploaderSvc,
+            prod.aws.euWest2.secretsManager,
+            prod.aws.euWest2.tenantStorage,
+            prod.aws.euWest2.quarantineStorage,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.frontendRedisCache,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.verificationRedisCache,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.caseManagementRedisCache,
+            prod.aws.euWest2.impactQueue
 
         include * -> *
     }
@@ -208,30 +763,74 @@ views {
         description 'Deployment architecture for impact assessment service'
 
         include
-            prod.euWest2.nrfVPC.nrfCluster.impactWorkerSvc,
-            prod.euWest2.nrfVPC.impactQueue,
-            prod.euWest2.nrfVPC.impactDLQ,
-            prod.euWest2.nrfVPC.auroraDB
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.impactWorkerSvc,
+            prod.aws.euWest2.impactQueue,
+            prod.aws.euWest2.impactDLQ,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB
 
         include * -> *
     }
 
-    deployment view ecsClusterView {
-        title 'ECS Cluster Services'
-        description 'All microservices running in the ECS cluster'
+    deployment view publicServicesView {
+        title 'Public-Facing Services (Node.js)'
+        description 'Node.js web services with Redis caching and user access patterns'
 
-        include prod.euWest2.nrfVPC.nrfCluster.*
+        include
+            prod.planningDevelopers,
+            prod.lpaAgents,
+            prod.nrfOperations,
+            prod.aws.euWest2.cloudFront,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicWafA,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.frontendSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.verificationSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.caseManagementSvc,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.frontendRedisCache,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.verificationRedisCache,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.caseManagementRedisCache
+
+        include * -> *
+    }
+
+    deployment view privateServicesView {
+        title 'Backend Services (Python + Node.js Scheduled)'
+        description 'Python API services accessed via direct service calls and Node.js scheduled tasks triggered by EventBridge'
+
+        include
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster.*
+
+        include * -> *
+    }
+
+    deployment view wafArchitecture {
+        title 'WAF Protection Architecture'
+        description 'Web Application Firewall protection for public-facing services'
+
+        include
+            prod.aws.euWest2.cloudFront,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicWafA,
+            prod.aws.euWest2.nrfVPC.publicSubnetA.publicALB,
+            prod.aws.euWest2.nrfVPC.publicSubnetB.publicWafB,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.nrfPrivateCluster
+
+        include * -> *
     }
 
     deployment view dataStorageView {
         title 'Data Storage Architecture'
-        description 'Database and storage components'
+        description 'Database, cache, and storage components with subnet placement'
 
         include
-            prod.euWest2.nrfVPC.auroraDB,
-            prod.euWest2.nrfVPC.tenantStorage,
-            prod.euWest2.nrfVPC.quarantineStorage,
-            prod.euWest2.nrfVPC.impactQueue,
-            prod.euWest2.nrfVPC.impactDLQ
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetA,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetB,
+            prod.aws.euWest2.nrfVPC.privateDBSubnetA.auroraDB,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.frontendRedisCache,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.verificationRedisCache,
+            prod.aws.euWest2.nrfVPC.privateAppSubnetA.caseManagementRedisCache,
+            prod.aws.euWest2.tenantStorage,
+            prod.aws.euWest2.quarantineStorage,
+            prod.aws.euWest2.impactQueue,
+            prod.aws.euWest2.impactDLQ
     }
 }

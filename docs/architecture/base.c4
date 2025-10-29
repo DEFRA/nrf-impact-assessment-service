@@ -36,6 +36,14 @@ specification {
         }
         technology 'AWS S3 bucket'
     }
+    element cache {
+        style {
+            shape cylinder
+            color red
+            icon https://icons.terrastruct.com/aws%2FDatabase%2FAmazon-ElastiCache_For-Redis_light-bg.svg
+        }
+        technology 'AWS ElastiCache Redis'
+    }
 }
 
 model {
@@ -46,7 +54,7 @@ model {
         description 'Local Planning Authority agent verifying planning applications'
     }
     nrfOperations = actor 'NRF Operations' {
-        description 'Nature Recovery Fund operations team managing cases'
+        description 'Nature Restoration Fund operations team managing cases'
     }
     ssclAdmin = actor 'SSCL Finance Admin' {
         description 'Shared Service Centre Limited finance administrator processing invoices'
@@ -87,7 +95,7 @@ model {
     }
 
     customerBank = system 'Customer Bank' {
-        description 'Customer banking system for processing bank transfer payments over £10,000'
+        description 'Customer banking system for paying invoices'
         technology 'Banking system'
         style {
             color red
@@ -95,7 +103,7 @@ model {
     }
 
     payForNRFService = system 'Pay for NRF Service' {
-        description 'Complete Nature Recovery Fund service platform for processing planning applications and levy payments'
+        description 'Complete Nature Restoration Fund service platform for processing planning applications and levy payments'
         style {
             color green
         }
@@ -114,6 +122,10 @@ model {
                 description 'Frontend application server handling user requests and orchestration'
                 technology 'Node.js web service'
                 icon https://icons.terrastruct.com/dev%2Fnodejs.svg
+            }
+
+            cache frontendRedisCache 'Frontend Redis Cache' {
+                description 'Redis cache for session management and application data caching'
             }
 
             microservice cdpUploaderService 'CDP Uploader Service' {
@@ -141,6 +153,7 @@ model {
             }
 
             developer -> nrfFrontendService 'Submits planning application details'
+            nrfFrontendService -> frontendRedisCache 'Caches user sessions and form data'
             nrfFrontendService -> cdpUploaderService 'Initiates file upload request'
             cdpUploaderService -> quarantineBucket 'Uploads file to quarantine'
             clamAVScanner -> cdpUploaderService 'Notifies scan outcome'
@@ -194,7 +207,12 @@ model {
                 icon https://icons.terrastruct.com/dev%2Fnodejs.svg
             }
 
+            cache verificationRedisCache 'Verification Redis Cache' {
+                description 'Redis cache for session management and verification workflow caching'
+            }
+
             lpaAgent -> verificationService 'Reviews and verifies planning applications'
+            verificationService -> verificationRedisCache 'Caches agent sessions and verification data'
             verificationService -> postgresDatabase 'Reads application details for verification'
         }
 
@@ -205,9 +223,9 @@ model {
             }
 
             microservice invoiceRequestorService 'Invoice Requestor Service' {
-                description 'Invoice generation and submission service'
-                technology 'Python service'
-                icon https://icons.terrastruct.com/dev%2Fpython.svg
+                description 'Scheduled service for invoice generation and submission'
+                technology 'Node.js scheduled service (EventBridge)'
+                icon https://icons.terrastruct.com/dev%2Fnodejs.svg
             }
 
             invoiceRequestorService -> postgresDatabase 'Reads verified application data'
@@ -224,9 +242,9 @@ model {
             }
 
             microservice invoiceReconciliationService 'Invoice Reconciliation Service' {
-                description 'Payment reconciliation and application completion service'
-                technology 'Python service'
-                icon https://icons.terrastruct.com/dev%2Fpython.svg
+                description 'Scheduled service for payment reconciliation and application completion'
+                technology 'Node.js scheduled service (EventBridge)'
+                icon https://icons.terrastruct.com/dev%2Fnodejs.svg
             }
 
             developer -> customerBank 'Pays invoice via bank transfer (> £10k)'
@@ -251,7 +269,12 @@ model {
                 icon https://icons.terrastruct.com/dev%2Fnodejs.svg
             }
 
+            cache caseManagementRedisCache 'Case Management Redis Cache' {
+                description 'Redis cache for session management and case data caching'
+            }
+
             nrfOperations -> caseManagementService 'Manages cases, disputes, and exceptions'
+            caseManagementService -> caseManagementRedisCache 'Caches operator sessions and case data'
             caseManagementService -> postgresDatabase 'Reads application and case data'
             caseManagementService -> postgresDatabase 'Updates case management records'
             caseManagementService -> govUKNotify 'Sends case notifications'
