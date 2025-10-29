@@ -75,7 +75,7 @@ specification {
         technology 'AWS NAT Gateway'
         style {
             color blue
-            icon https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FAmazon-VPC_NAT-Gateway.svg
+            icon https://icons.terrastruct.com/aws%2FNetworking%20&%20Content%20Delivery%2FAmazon-VPC_light-bg.svg
         }
     }
     deploymentNode ecsCluster {
@@ -91,7 +91,6 @@ specification {
         technology 'AWS ECS Service'
         style {
             color green
-            icon https://icons.terrastruct.com/aws%2FCompute%2FAmazon-ECS_Service.svg
         }
     }
     deploymentNode ecr {
@@ -123,7 +122,6 @@ specification {
         technology 'AWS SQS'
         style {
             color indigo
-            icon https://icons.terrastruct.com/aws%2FApplication%20Integration%2FAmazon-Simple-Queue-Service.svg
         }
     }
     deploymentNode cdn {
