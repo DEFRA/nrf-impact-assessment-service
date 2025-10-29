@@ -2,7 +2,10 @@
 
 This is work-in-progress. See [To Do List](./TODO.md)
 
+**📚 [View Architecture Documentation →](./docs/architecture/README.md)**
+
 - [nrf-impact-assessment-service](#nrf-impact-assessment-service)
+  - [Documentation](#documentation)
   - [Requirements](#requirements)
     - [Python](#python)
     - [Linting and Formatting](#linting-and-formatting)
@@ -19,6 +22,18 @@ This is work-in-progress. See [To Do List](./TODO.md)
     - [SonarCloud](#sonarcloud)
   - [Licence](#licence)
     - [About the licence](#about-the-licence)
+
+## Documentation
+
+For comprehensive architecture documentation, including system design and deployment diagrams, see:
+
+**[📁 Documentation Index](./docs/architecture/README.md)**
+
+Key resources:
+
+- [Architecture Diagrams](./docs/architecture/) - LikeC4 logical and deployment architecture diagrams
+- [Logical Architecture](./docs/architecture/base.c4) - System components and relationships
+- [Deployment Architecture](./docs/architecture/deployment.c4) - AWS infrastructure and deployment
 
 ## Requirements
 
@@ -46,7 +61,8 @@ This opinionated template uses the [`Fast API`](https://fastapi.tiangolo.com/) P
 
 The application uses Pydantic's `BaseSettings` for configuration management in `app/config.py`, automatically mapping environment variables to configuration fields.
 
-In CDP, environment variables and secrets need to be set using CDP conventions.  See links below:
+In CDP, environment variables and secrets need to be set using CDP conventions. See links below:
+
 - [CDP App Config](https://github.com/DEFRA/cdp-documentation/blob/main/how-to/config.md)
 - [CDP Secrets](https://github.com/DEFRA/cdp-documentation/blob/main/how-to/secrets.md)
 
@@ -96,20 +112,20 @@ For the best development experience, configure VS Code to use Ruff:
 
 ```json
 {
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.ruff": "explicit",
+    "source.organizeImports.ruff": "explicit"
+  },
+  "ruff.lint.run": "onSave",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-        "source.fixAll.ruff": "explicit",
-        "source.organizeImports.ruff": "explicit"
-    },
-    "ruff.lint.run": "onSave",
-    "[python]": {
-        "editor.defaultFormatter": "charliermarsh.ruff",
-        "editor.formatOnSave": true,
-        "editor.codeActionsOnSave": {
-            "source.fixAll.ruff": "explicit",
-            "source.organizeImports.ruff": "explicit"
-        }
+      "source.fixAll.ruff": "explicit",
+      "source.organizeImports.ruff": "explicit"
     }
+  }
 }
 ```
 
@@ -117,7 +133,7 @@ This configuration will:
 
 - Format your code with Ruff when you save a file
 - Fix linting issues automatically when possible
-- Organize imports according to isort rules
+- Organise imports according to isort rules
 
 #### Ruff Configuration
 
@@ -125,7 +141,7 @@ Ruff is configured in the `.ruff.toml` file
 
 ### Docker
 
-This repository uses Docker throughput its lifecycle i.e. both for local development and the environments. A benefit of this is that environment variables & secrets are managed consistently throughout the lifecycle
+This repository uses Docker throughout its lifecycle i.e. both for local development and the environments. A benefit of this is that environment variables & secrets are managed consistently throughout the lifecycle
 
 See the `Dockerfile` and `compose.yml` for details
 
@@ -192,13 +208,13 @@ uv run pytest
 
 ## API endpoints
 
-| Endpoint             | Description                    |
-| :------------------- | :----------------------------- |
-| `GET: /docs`         | Automatic API Swagger docs     |
-| `GET: /health`       | Health check endpoint          |
-| `GET: /example/test` | Simple example endpoint        |
-| `GET: /example/db`   | Database query example         |
-| `GET: /example/http` | HTTP client example            |
+| Endpoint             | Description                |
+| :------------------- | :------------------------- |
+| `GET: /docs`         | Automatic API Swagger docs |
+| `GET: /health`       | Health check endpoint      |
+| `GET: /example/test` | Simple example endpoint    |
+| `GET: /example/db`   | Database query example     |
+| `GET: /example/http` | HTTP client example        |
 
 ## Custom Cloudwatch Metrics
 
