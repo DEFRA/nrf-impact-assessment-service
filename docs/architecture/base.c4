@@ -130,7 +130,8 @@ model {
 
             microservice cdpUploaderService 'CDP Uploader Service' {
                 description 'Document upload service with virus scanning capabilities'
-                technology 'File upload and scanning service'
+                technology 'Python file upload and scanning service'
+                icon https://icons.terrastruct.com/dev%2Fpython.svg
                 style {
                     color indigo
                 }
@@ -146,7 +147,8 @@ model {
 
             component clamAVScanner 'ClamAV Scanner' {
                 description 'Antivirus scanner for uploaded documents'
-                technology 'ClamAV antivirus engine'
+                technology 'ClamAV antivirus engine (containerized)'
+                icon https://icons.terrastruct.com/dev%2Fpython.svg
                 style {
                     color indigo
                 }
@@ -351,5 +353,213 @@ views {
         title 'NRF Case Management Service'
         description 'Operations portal for managing cases, disputes, and exceptions'
         include nrfCaseManagementService.*, nrfOperations, postgresDatabase, govUKNotify, developer
+    }
+
+    // Dynamic Views (Sequence Diagrams)
+
+    dynamic view applicationSubmission {
+        title 'Application Submission Flow'
+        description 'Developer submits planning application - all applications follow the same submission process'
+
+        developer -> nrfFrontendService.nrfFrontendService 'Submits planning application'
+        nrfFrontendService.nrfFrontendService -> govUKNotify 'Sends magic link for authentication'
+        govUKNotify -> developer 'Delivers magic link email'
+        developer -> nrfFrontendService.nrfFrontendService 'Accesses system via magic link'
+        nrfFrontendService.nrfFrontendService -> nrfFrontendService.frontendRedisCache 'Caches user session'
+        nrfFrontendService.nrfFrontendService -> payForNRFService.postgresDatabase 'Saves application details'
+        developer -> nrfFrontendService.nrfFrontendService 'Uploads supporting documents'
+        nrfFrontendService.nrfFrontendService -> nrfFrontendService.cdpUploaderService 'Initiates file upload'
+        nrfFrontendService.cdpUploaderService -> nrfFrontendService.quarantineBucket 'Uploads file to quarantine'
+        nrfFrontendService.clamAVScanner -> nrfFrontendService.cdpUploaderService 'Returns virus scan result'
+        nrfFrontendService.cdpUploaderService -> nrfFrontendService.tenantBucket 'Moves clean file to tenant bucket'
+        nrfFrontendService.cdpUploaderService -> nrfFrontendService.nrfFrontendService 'Confirms upload success'
+        nrfFrontendService.nrfFrontendService -> payForNRFService.postgresDatabase 'Saves application with file references'
+        nrfFrontendService.nrfFrontendService -> nrfImpactAssessmentService.impactAssessmentQueue 'Pushes application for assessment'
+        nrfFrontendService.nrfFrontendService -> developer 'Application submitted (invoice will be sent after verification)'
+    }
+
+    dynamic view impactAssessmentProcessing {
+        title 'Impact Assessment Processing Flow'
+        description 'Worker processes geospatial analysis and generates NRF levy estimate'
+
+        nrfFrontendService.nrfFrontendService -> nrfImpactAssessmentService.impactAssessmentQueue 'Pushes application for assessment'
+        nrfImpactAssessmentService.impactAssessmentWorker -> nrfImpactAssessmentService.impactAssessmentQueue 'Polls for new applications'
+        nrfImpactAssessmentService.impactAssessmentQueue -> nrfImpactAssessmentService.impactAssessmentWorker 'Returns application message'
+        nrfImpactAssessmentService.impactAssessmentWorker -> payForNRFService.postgresDatabase 'Reads geospatial and biodiversity data'
+        nrfImpactAssessmentService.impactAssessmentWorker -> payForNRFService.postgresDatabase 'Saves assessment results and levy estimate'
+        nrfImpactAssessmentService.impactAssessmentWorker -> govUKNotify 'Sends levy estimate notification'
+        govUKNotify -> developer 'Delivers levy estimate email'
+        nrfImpactAssessmentService.impactAssessmentWorker -> govUKNotify 'Sends payment request confirmation'
+        govUKNotify -> developer 'Delivers payment confirmation email'
+    }
+
+    dynamic view lpaVerification {
+        title 'LPA Agent Verification Flow'
+        description 'LPA agent verifies planning application details'
+
+        lpaAgent -> nrfVerificationService.verificationService 'Requests access to verify applications'
+        nrfVerificationService.verificationService -> govUKNotify 'Sends magic link'
+        govUKNotify -> lpaAgent 'Delivers magic link email'
+        lpaAgent -> nrfVerificationService.verificationService 'Accesses system via magic link'
+        nrfVerificationService.verificationService -> nrfVerificationService.verificationRedisCache 'Caches agent session'
+        lpaAgent -> nrfVerificationService.verificationService 'Requests application list'
+        nrfVerificationService.verificationService -> payForNRFService.postgresDatabase 'Queries pending applications'
+        payForNRFService.postgresDatabase -> nrfVerificationService.verificationService 'Returns application data'
+        nrfVerificationService.verificationService -> lpaAgent 'Displays pending applications'
+        lpaAgent -> nrfVerificationService.verificationService 'Selects application to review'
+        nrfVerificationService.verificationService -> payForNRFService.postgresDatabase 'Reads complete application details'
+        payForNRFService.postgresDatabase -> nrfVerificationService.verificationService 'Returns application data'
+        nrfVerificationService.verificationService -> lpaAgent 'Displays application for review'
+        lpaAgent -> nrfVerificationService.verificationService 'Verifies and approves application'
+        nrfVerificationService.verificationService -> payForNRFService.postgresDatabase 'Updates application verification status'
+        nrfVerificationService.verificationService -> lpaAgent 'Confirmation of verification'
+    }
+
+    dynamic view invoiceGeneration {
+        title 'Invoice Generation and Submission Flow'
+        description 'Scheduled service generates invoices and submits to SOP - all applications receive invoices'
+
+        nrfInvoiceRequestorService.invoiceRequestorService -> payForNRFService.postgresDatabase 'Queries verified applications requiring invoices'
+        payForNRFService.postgresDatabase -> nrfInvoiceRequestorService.invoiceRequestorService 'Returns application data'
+        nrfInvoiceRequestorService.invoiceRequestorService -> sopFTPServer 'Sends invoice and customer details via FTP'
+        sopFTPServer -> SOP 'Transfers invoice data for processing'
+        nrfInvoiceRequestorService.invoiceRequestorService -> payForNRFService.postgresDatabase 'Marks invoice as submitted'
+        ssclAdmin -> SOP 'Reviews and approves invoices'
+        SOP -> developer 'Sends invoice with GOV.UK Pay link (< £10k) or bank details (> £10k)'
+    }
+
+    dynamic view paymentReconciliation {
+        title 'Payment Reconciliation Flow'
+        description 'Bank transfer payments reconciled with invoices (> £10k)'
+
+        developer -> customerBank 'Pays invoice via bank transfer'
+        customerBank -> SOP 'Bank statement data'
+        SOP -> sopFTPServer 'Exports transaction report via FTP'
+        nrfReconciliationService.invoiceReconciliationService -> sopFTPServer 'Retrieves transaction report'
+        sopFTPServer -> nrfReconciliationService.invoiceReconciliationService 'Returns payment data'
+        nrfReconciliationService.invoiceReconciliationService -> payForNRFService.postgresDatabase 'Finds matching application'
+        nrfReconciliationService.invoiceReconciliationService -> payForNRFService.postgresDatabase 'Saves reconciliation result'
+        nrfReconciliationService.invoiceReconciliationService -> payForNRFService.postgresDatabase 'Updates application status to Completed'
+        nrfReconciliationService.invoiceReconciliationService -> govUKNotify 'Sends payment confirmation'
+        govUKNotify -> developer 'Delivers payment confirmation email'
+    }
+
+    dynamic view paymentCreditCard {
+        title 'Payment Flow - Credit Card via GOV.UK Pay'
+        description 'Developer pays NRF levy via credit card (< £10k) using GOV.UK Pay link in invoice'
+        
+        // Invoice generated and sent by SOP (see invoiceGeneration flow)
+        SOP -> developer 'Sends invoice with GOV.UK Pay link (< £10k)'
+        developer -> govUKPay 'Clicks link and enters card details'
+        govUKPay -> developer 'Payment confirmation page'
+        govUKPay -> nrfFrontendService.nrfFrontendService 'Webhook: Payment confirmed'
+        nrfFrontendService.nrfFrontendService -> payForNRFService.postgresDatabase 'Updates payment and application status to Completed'
+        nrfFrontendService.nrfFrontendService -> govUKNotify 'Sends payment confirmation'
+        govUKNotify -> developer 'Delivers payment confirmation email'
+    }
+
+    dynamic view paymentBankTransfer {
+        title 'Payment Flow - Bank Transfer'
+        description 'Developer pays NRF levy via BACS bank transfer (> £10k) - reconciled by scheduled service'
+        
+        // Invoice generated and sent by SOP (see invoiceGeneration flow)
+        SOP -> developer 'Sends invoice with bank details (> £10k)'
+        developer -> customerBank 'Pays invoice via BACS bank transfer'
+        customerBank -> SOP 'Bank statement data transferred'
+        SOP -> sopFTPServer 'Exports transaction report via FTP'
+        
+        // Reconciliation service runs on schedule (see paymentReconciliation flow)
+        nrfReconciliationService.invoiceReconciliationService -> sopFTPServer 'Retrieves transaction report'
+        nrfReconciliationService.invoiceReconciliationService -> payForNRFService.postgresDatabase 'Matches payment to application'
+        nrfReconciliationService.invoiceReconciliationService -> payForNRFService.postgresDatabase 'Updates application status to Completed'
+        nrfReconciliationService.invoiceReconciliationService -> govUKNotify 'Sends payment confirmation'
+        govUKNotify -> developer 'Delivers payment confirmation email'
+    }
+
+    dynamic view caseManagement {
+        title 'Case Management Flow'
+        description 'NRF operations team manages cases, disputes, and exceptions'
+
+        nrfOperations -> nrfCaseManagementService.caseManagementService 'Accesses operations portal'
+        nrfCaseManagementService.caseManagementService -> nrfCaseManagementService.caseManagementRedisCache 'Caches operator session'
+        nrfOperations -> nrfCaseManagementService.caseManagementService 'Views dashboard'
+        nrfCaseManagementService.caseManagementService -> payForNRFService.postgresDatabase 'Queries cases, disputes, and exceptions'
+        payForNRFService.postgresDatabase -> nrfCaseManagementService.caseManagementService 'Returns case data'
+        nrfCaseManagementService.caseManagementService -> nrfOperations 'Displays dashboard'
+        nrfOperations -> nrfCaseManagementService.caseManagementService 'Selects and updates case'
+        nrfCaseManagementService.caseManagementService -> payForNRFService.postgresDatabase 'Updates case record'
+        nrfCaseManagementService.caseManagementService -> govUKNotify 'Sends case update notification'
+        govUKNotify -> developer 'Delivers case update email'
+    }
+
+    dynamic view endToEndFlowCreditCard {
+        title 'Complete End-to-End Flow - Credit Card Payment'
+        description 'Application submission through to credit card payment confirmation (< £10k)'
+        
+        // Application Submission
+        developer -> nrfFrontendService.nrfFrontendService 'Submits application and uploads files'
+        nrfFrontendService.nrfFrontendService -> payForNRFService.postgresDatabase 'Saves application'
+        nrfFrontendService.nrfFrontendService -> nrfImpactAssessmentService.impactAssessmentQueue 'Queues for assessment'
+        
+        // Impact Assessment
+        nrfImpactAssessmentService.impactAssessmentWorker -> payForNRFService.postgresDatabase 'Reads application and calculates levy'
+        nrfImpactAssessmentService.impactAssessmentWorker -> payForNRFService.postgresDatabase 'Saves assessment results'
+        nrfImpactAssessmentService.impactAssessmentWorker -> govUKNotify 'Sends levy estimate'
+        govUKNotify -> developer 'Levy estimate email'
+        
+        // LPA Verification
+        lpaAgent -> nrfVerificationService.verificationService 'Accesses verification portal'
+        nrfVerificationService.verificationService -> payForNRFService.postgresDatabase 'Reads application'
+        lpaAgent -> nrfVerificationService.verificationService 'Verifies application'
+        nrfVerificationService.verificationService -> payForNRFService.postgresDatabase 'Updates verification status'
+        
+        // Invoice Generation
+        nrfInvoiceRequestorService.invoiceRequestorService -> payForNRFService.postgresDatabase 'Queries verified applications'
+        nrfInvoiceRequestorService.invoiceRequestorService -> SOP 'Submits invoice via FTP'
+        ssclAdmin -> SOP 'Approves invoice'
+        SOP -> developer 'Sends invoice with GOV.UK Pay link (< £10k)'
+        
+        // Payment via Credit Card
+        developer -> govUKPay 'Clicks link in invoice and pays via card'
+        govUKPay -> nrfFrontendService.nrfFrontendService 'Payment webhook'
+        nrfFrontendService.nrfFrontendService -> payForNRFService.postgresDatabase 'Updates status to Completed'
+        nrfFrontendService.nrfFrontendService -> govUKNotify 'Sends payment confirmation'
+        govUKNotify -> developer 'Payment confirmation email'
+    }
+
+    dynamic view endToEndFlowBankTransfer {
+        title 'Complete End-to-End Flow - Bank Transfer Payment'
+        description 'Application submission through to bank transfer payment confirmation (> £10k)'
+        
+        // Application Submission
+        developer -> nrfFrontendService.nrfFrontendService 'Submits application and uploads files'
+        nrfFrontendService.nrfFrontendService -> payForNRFService.postgresDatabase 'Saves application'
+        nrfFrontendService.nrfFrontendService -> nrfImpactAssessmentService.impactAssessmentQueue 'Queues for assessment'
+        
+        // Impact Assessment
+        nrfImpactAssessmentService.impactAssessmentWorker -> payForNRFService.postgresDatabase 'Reads application and calculates levy'
+        nrfImpactAssessmentService.impactAssessmentWorker -> payForNRFService.postgresDatabase 'Saves assessment results'
+        nrfImpactAssessmentService.impactAssessmentWorker -> govUKNotify 'Sends levy estimate'
+        govUKNotify -> developer 'Levy estimate email'
+        
+        // LPA Verification
+        lpaAgent -> nrfVerificationService.verificationService 'Accesses verification portal'
+        nrfVerificationService.verificationService -> payForNRFService.postgresDatabase 'Reads application'
+        lpaAgent -> nrfVerificationService.verificationService 'Verifies application'
+        nrfVerificationService.verificationService -> payForNRFService.postgresDatabase 'Updates verification status'
+        
+        // Invoice Generation
+        nrfInvoiceRequestorService.invoiceRequestorService -> payForNRFService.postgresDatabase 'Queries verified applications'
+        nrfInvoiceRequestorService.invoiceRequestorService -> SOP 'Submits invoice via FTP'
+        ssclAdmin -> SOP 'Approves invoice'
+        SOP -> developer 'Sends invoice with bank details (> £10k)'
+        
+        // Payment via Bank Transfer
+        developer -> customerBank 'Pays via BACS bank transfer'
+        SOP -> sopFTPServer 'Exports transaction report'
+        nrfReconciliationService.invoiceReconciliationService -> sopFTPServer 'Retrieves payment data'
+        nrfReconciliationService.invoiceReconciliationService -> payForNRFService.postgresDatabase 'Updates status to Completed'
+        nrfReconciliationService.invoiceReconciliationService -> govUKNotify 'Sends payment confirmation'
+        govUKNotify -> developer 'Payment confirmation email'
     }
 }
