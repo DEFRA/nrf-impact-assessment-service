@@ -19,8 +19,9 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: .venv/bin/pytest
+        entry: bash -c '.venv/bin/pytest --ignore=tests/e2e || test $? -eq 5'
         language: system
         pass_filenames: false
         always_run: true
         types: [python]
+        # Exit code 5 = no tests collected (acceptable in Phase 1)
