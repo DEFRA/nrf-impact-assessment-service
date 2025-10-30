@@ -5,15 +5,11 @@ description = "nrf-impact-assessment-service"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "asgi-logger>=0.1.0",
-    "aws-embedded-metrics>=3.3.0",
-    "dnspython>=2.7.0",
-    "ecs-logging>=2.2.0",
-    "fastapi>=0.115.12",
-    "httpx>=0.28.1",
+    "boto3>=1.36.7",
+    "boto3-stubs==1.40.62",
+    "flask>=3.1.0",
     "pydantic-settings>=2.9.1",
-    "pymongo[aws,encryption,snappy,zstd]>=4.13.1",
-    "uvicorn>=0.34.3",
+    "waitress>=3.0.2",
 ]
 
 [dependency-groups]

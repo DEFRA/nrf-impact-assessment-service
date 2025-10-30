@@ -22,45 +22,30 @@ services:
     networks:
       - cdp-tenant
 
-  mongodb:
-    image: mongo:6.0.13
-    networks:
-      - cdp-tenant
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongodb-data:/data
-    restart: always
-
-  service:
+  worker:
     build:
       context: .
       target: development
     ports:
-      - 8085:8085
+      - "8085:8085"
     links:
       - "localstack:localstack"
-      - "mongodb:mongodb"
     depends_on:
       localstack:
         condition: service_healthy
-      mongodb:
-        condition: service_started
     profiles:
-      - service
+      - worker
     env_file:
       - "compose/aws.env"
-      - "compose/secrets.env"
     environment:
-      PORT: ${PORT:-8085}
-      AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:-http://localstack:4566}
-      MONGO_URI: ${MONGO_URI:-mongodb://mongodb:27017/}
-      HOST: ${HOST:-0.0.0.0}
+      AWS_REGION: eu-west-2
+      AWS_ENDPOINT_URL: http://localstack:4566
+      AWS_SQS_QUEUE_URL: http://localstack:4566/000000000000/nrf-assessment-queue
     develop:
       watch:
         - action: sync
-          path: ./app
-          target: /home/nonroot/app
+          path: ./worker
+          target: /home/nonroot/worker
           ignore:
             - README.md
             - "**/*.md"
@@ -82,9 +67,6 @@ services:
           target: /home/nonroot/pyproject.toml
     networks:
       - cdp-tenant
-
-volumes:
-  mongodb-data:
 
 networks:
   cdp-tenant:
