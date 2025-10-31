@@ -114,7 +114,20 @@ class SQSMessageResponse(BaseModel):
                         logger.info("Received message: %s", message_id)
                         logger.info("Message body: %s", body)
 
-                        self.sqs_client.delete_message(
+try:
+    self.sqs_client.delete_message(
+        QueueUrl=self.queue_url,
+        ReceiptHandle=message["ReceiptHandle"],
+    )
+    logger.info("Deleted message: %s", message_id)
+except botocore.exceptions.ClientError as e:
+    error_code = e.response.get("Error", {}).get("Code", "")
+    if error_code == "ReceiptHandleIsInvalid":
+        logger.warning("Receipt handle expired, message may have already been deleted")
+    else:
+        logger.error("Failed to delete message %s: %s", message_id, e)
+        # Message will become visible again after visibility timeout
+        raise```
                             QueueUrl=self.queue_url,
                             ReceiptHandle=message["ReceiptHandle"],
                         )
