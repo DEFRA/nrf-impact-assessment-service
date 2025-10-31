@@ -190,7 +190,21 @@ def main() -> None:
             daemon=True,
             name="health-server",
         )
-        health_thread.start()
+import socket
+
+def is_port_available(port: int) -> bool:
+    """Check if a port is available."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("0.0.0.0", port))
+            return True
+        except OSError:
+            return False
+
+# Before starting health server
+if not is_port_available(config.health_port):
+    logger.error("Health port %s is not available", config.health_port)
+    sys.exit(1)
         logger.info("Health check server started in background thread")
 
         worker = Worker(sqs_client=sqs_client, queue_url=config.sqs_queue_url)
