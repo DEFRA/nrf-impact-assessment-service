@@ -123,7 +123,26 @@ class SQSMessageResponse(BaseModel):
                     logger.debug("No messages received (20s poll timeout)")
 
             except Exception:
-                logger.exception("Error processing message")
+except botocore.exceptions.ClientError as e:
+    error_code = e.response.get("Error", {}).get("Code", "")
+    if error_code == "QueueDoesNotExist":
+        logger.error("Queue does not exist, cannot continue")
+        raise  # Fatal error
+    elif error_code in ("AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"):
+        logger.error("Authentication/authorization error: %s", error_code)
+        raise  # Fatal error
+    else:
+        logger.warning("AWS client error: %s, retrying...", error_code)
+        time.sleep(5)
+except botocore.exceptions.BotoCoreError as e:
+    logger.warning("AWS SDK error (network/timeout): %s, retrying...", e)
+    time.sleep(5)
+except KeyboardInterrupt:
+    # Allow graceful shutdown
+    raise
+except Exception as e:
+    logger.exception("Unexpected error processing message: %s", e)
+    time.sleep(5)
                 time.sleep(5)  # Brief pause before retrying
 
         logger.info("Worker stopped")
