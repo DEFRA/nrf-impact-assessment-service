@@ -60,7 +60,51 @@ class Worker:
                     WaitTimeSeconds=20,
                 )
 
-                messages = response.get("Messages", [])
+
+# SQS message model
+
+from pydantic import BaseModel, Field
+from typing import Any
+
+class SQSMessage(BaseModel):
+    """Validated SQS message structure."""
+
+    message_id: str = Field(..., description="Unique message identifier")
+    body: str = Field(..., description="Message body content")
+    receipt_handle: str = Field(..., description="Handle for deleting message")
+
+    # Optional fields that SQS may include
+    attributes: dict[str, Any] | None = None
+    message_attributes: dict[str, Any] | None = None
+    md5_of_body: str | None = None
+
+    class Config:
+        # Allow extra fields in case AWS adds new ones
+        extra = "allow"
+
+
+class SQSMessageResponse(BaseModel):
+    """Validated SQS receive_message response structure."""
+
+    messages: list[SQSMessage] | None = Field(default=None)
+
+    class Config:
+        extra = "allow"
+
+
+# Usage in Worker
+...
+    validated_response = SQSMessageResponse(**response)
+    messages = validated_response.messages or []
+
+    if messages:
+        for message in messages:
+            # Now we know message has all required fields
+            message_id = message.message_id
+            body = message.body
+            receipt_handle = message.receipt_handle
+...
+
 
                 if messages:
                     for message in messages:
