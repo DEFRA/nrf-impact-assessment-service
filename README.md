@@ -1,19 +1,21 @@
-# nrf-impact-assessment-service
+# NRF Impact Assessment Service
 
-This is work-in-progress. See [To Do List](./TODO.md)
+SQS polling worker for processing nutrient impact assessments, with CDP platform compliance.
 
-- [nrf-impact-assessment-service](#nrf-impact-assessment-service)
+**Architecture:** Long-running worker with minimal Flask health endpoint (see [docs/cdp-adaptation.md](docs/cdp-adaptation.md) for rationale)
+
+**Status:** Phase 1 complete - Hello world worker with SQS polling
+
+- [NRF Impact Assessment Service](#nrf-impact-assessment-service)
   - [Requirements](#requirements)
     - [Python](#python)
     - [Linting and Formatting](#linting-and-formatting)
     - [Docker](#docker)
   - [Local development](#local-development)
     - [Setup & Configuration](#setup--configuration)
-    - [Development](#development)
+    - [Running the worker](#running-the-worker)
     - [Testing](#testing)
-    - [Production Mode](#production-mode)
-  - [API endpoints](#api-endpoints)
-  - [Custom Cloudwatch Metrics](#custom-cloudwatch-metrics)
+  - [Health endpoint](#health-endpoint)
   - [Pipelines](#pipelines)
     - [Dependabot](#dependabot)
     - [SonarCloud](#sonarcloud)
@@ -40,13 +42,16 @@ source .venv/bin/activate
 pre-commit install
 ```
 
-This opinionated template uses the [`Fast API`](https://fastapi.tiangolo.com/) Python API framework.
-
 ### Environment Variable Configuration
 
-The application uses Pydantic's `BaseSettings` for configuration management in `app/config.py`, automatically mapping environment variables to configuration fields.
+The worker uses Pydantic's `BaseSettings` for configuration management in `worker/config.py`, automatically mapping environment variables to configuration fields.
 
-In CDP, environment variables and secrets need to be set using CDP conventions.  See links below:
+**Key configuration:**
+- `AWS_REGION`: AWS region (default: `eu-west-2`)
+- `AWS_ENDPOINT_URL`: AWS endpoint (for LocalStack in local dev)
+- `AWS_SQS_QUEUE_URL`: SQS queue URL for job messages
+
+In CDP, environment variables need to be set using CDP conventions:
 - [CDP App Config](https://github.com/DEFRA/cdp-documentation/blob/main/how-to/config.md)
 - [CDP Secrets](https://github.com/DEFRA/cdp-documentation/blob/main/how-to/secrets.md)
 
@@ -145,66 +150,61 @@ Follow the convention below for environment variables and secrets in local devel
 
 **Pre-Commit Hooks:** Ensure you install the pre-commit hooks, as above
 
-### Development
+### Running the worker
 
-This app can be run locally by either using the Docker Compose project or via the provided script `scripts/start_dev_server.sh`.
-
-#### Using Docker Compose
-
-To run the application using Docker Compose, you can use the following command:
+The worker runs as a Docker container using Docker Compose:
 
 ```bash
-docker compose --profile service up --build
+# Start worker with LocalStack (for local SQS)
+docker compose --profile worker up --build
+
+# Watch mode for hot-reloading
+# Press 'w' after services start to enable watch mode
 ```
 
-If you want to enable hot-reloading, you can press the `w` key once the compose project is running to enable `watch` mode.
+The worker will:
+- Start Flask health server on port 8085
+- Poll SQS queue for messages (20 second long-polling)
+- Process messages and log results
+- Gracefully shutdown on SIGTERM/SIGINT
 
-#### Using the provided script
-
-To run the application using the provided script, you can execute:
+**Send test message:**
 
 ```bash
-./scripts/start_dev_server.sh
+aws --endpoint-url=http://localhost:4566 sqs send-message \
+  --queue-url http://localhost:4566/000000000000/nrf-assessment-queue \
+  --message-body '{"test": "hello world"}'
 ```
 
-This script will:
+**View logs:**
 
-- Check if Docker is running
-- Start dependent services with Docker Compose (Localstack, MongoDB)
-- Set up environment variables for local development
-- Load configuration from compose/aws.env and compose/secrets.env
-- Verify the Python virtual environment is set up
-- Start the FastAPI application with hot-reload enabled
-
-The service will then run on `http://localhost:8085`
+```bash
+docker compose logs worker -f
+```
 
 ### Testing
 
-Ensure the python virtual environment is configured and libraries are installed using `uv sync`, [as above](#python)
-
-Testing follows the [FastApi documented approach](https://fastapi.tiangolo.com/tutorial/testing/); using pytest & starlette.
-
-To test the application run:
-
 ```bash
-uv run pytest
+# Run all tests
+uv run pytest -v
+
+# Run end-to-end integration test
+uv run pytest tests/e2e/ -v
 ```
 
-## API endpoints
+The e2e test starts Docker Compose services, sends a test message, and verifies processing.
 
-| Endpoint             | Description                    |
-| :------------------- | :----------------------------- |
-| `GET: /docs`         | Automatic API Swagger docs     |
-| `GET: /health`       | Health check endpoint          |
-| `GET: /example/test` | Simple example endpoint        |
-| `GET: /example/db`   | Database query example         |
-| `GET: /example/http` | HTTP client example            |
+## Health endpoint
 
-## Custom Cloudwatch Metrics
+The worker exposes a single HTTP endpoint for CDP platform compliance:
 
-Uses the [aws embedded metrics library](https://github.com/awslabs/aws-embedded-metrics-python). An example can be found in `metrics.py`
+| Endpoint       | Description                               |
+| :------------- | :---------------------------------------- |
+| `GET: /health` | Health check endpoint (returns `{"status": "ok"}`) |
 
-In order to make this library work in the environments, the environment variable `AWS_EMF_ENVIRONMENT=local` is set in the app config. This tells the library to use the local cloudwatch agent that has been configured in CDP, and uses the environment variables set up in CDP `AWS_EMF_AGENT_ENDPOINT`, `AWS_EMF_LOG_GROUP_NAME`, `AWS_EMF_LOG_STREAM_NAME`, `AWS_EMF_NAMESPACE`, `AWS_EMF_SERVICE_NAME`
+The health endpoint runs on port 8085 via a Flask server in a background thread, using Waitress WSGI server for production-grade concurrent request handling.
+
+**Why Flask instead of FastAPI?** See [docs/cdp-adaptation.md](docs/cdp-adaptation.md) for the architectural decision.
 
 ## Pipelines
 
