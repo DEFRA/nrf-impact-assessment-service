@@ -61,6 +61,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/bb/37/4424d01287df399e0664feba3d5567628a34c63fb343ef68df124bedba30/boto3_stubs-1.40.62-py3-none-any.whl", hash = "sha256:5c8e4458441d4207502c282727f02030755767a311f768b4f8ac3c4af2dfaf7b", size = 69067, upload-time = "2025-10-29T21:43:04.504Z" },
 ]
 
+[package.optional-dependencies]
+sqs = [
+    { name = "mypy-boto3-sqs" },
+]
+
 [[package]]
 name = "botocore"
 version = "1.38.35"
@@ -370,6 +375,15 @@ wheels = [
 ]
 
 [[package]]
+name = "mypy-boto3-sqs"
+version = "1.40.61"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/af/23331e9b9ae0e317efca924e7a2aabb8142835b4ae8322bc1ffdb0249cbd/mypy_boto3_sqs-1.40.61.tar.gz", hash = "sha256:16d34db653dcf28618b4e422ae32eb2d34f3f937dcee5edd4ca4de3ddb9c3857", size = 23574, upload-time = "2025-10-28T19:45:36.949Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/20/f9/555d4c2a74bf1f5cd750c10a57240756f115b40f9df833af37cd28c2e95a/mypy_boto3_sqs-1.40.61-py3-none-any.whl", hash = "sha256:32478c2530c39aebb399c0b6824d5c8324ebfd37d7145ce201cd77a989c1f8ca", size = 33719, upload-time = "2025-10-28T19:45:34.385Z" },
+]
+
+[[package]]
 name = "nodeenv"
 version = "1.9.1"
 source = { registry = "https://pypi.org/simple" }
@@ -384,7 +398,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "boto3" },
-    { name = "boto3-stubs" },
+    { name = "boto3-stubs", extra = ["sqs"] },
     { name = "flask" },
     { name = "pydantic-settings" },
     { name = "waitress" },
@@ -404,7 +418,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = ">=1.36.7" },
-    { name = "boto3-stubs", specifier = "==1.40.62" },
+    { name = "boto3-stubs", extras = ["sqs"], specifier = "==1.40.62" },
     { name = "flask", specifier = ">=3.1.0" },
     { name = "pydantic-settings", specifier = ">=2.9.1" },
     { name = "waitress", specifier = ">=3.0.2" },
