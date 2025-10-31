@@ -62,7 +62,7 @@ def is_port_available(port: int) -> bool:
     """Check if a port is available."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
-            s.bind(("0.0.0.0", port))  # noqa: S104
+            s.bind(("127.0.0.1", port))
             return True
         except OSError:
             return False
