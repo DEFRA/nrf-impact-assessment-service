@@ -41,7 +41,7 @@ def main() -> None:
         host=config.host,
         port=config.port,
         log_config=config.log_config,
-        reload=config.python_env == "development"
+        reload=config.python_env == "development",
     )
 
 

@@ -27,7 +27,7 @@ COPY --chown=nonroot:nonroot uv.lock .
 
 RUN uv sync --frozen --no-cache
 
-COPY --chown=nonroot:nonroot app/ ./app/
+COPY --chown=nonroot:nonroot worker/ ./worker/
 COPY --chown=nonroot:nonroot logging-dev.json .
 
 ARG PORT=8085
@@ -35,7 +35,7 @@ ARG PORT_DEBUG=8086
 ENV PORT=${PORT}
 EXPOSE ${PORT} ${PORT_DEBUG}
 
-CMD [ "-m", "app.main" ]
+CMD [ "-m", "worker.worker" ]
 
 FROM defradigital/python:${PARENT_VERSION} AS production
 
@@ -57,11 +57,11 @@ WORKDIR /home/nonroot
 
 COPY --chown=nonroot:nonroot --from=development /home/nonroot/.venv .venv/
 
-COPY --chown=nonroot:nonroot --from=development /home/nonroot/app/ ./app/
+COPY --chown=nonroot:nonroot --from=development /home/nonroot/worker/ ./worker/
 COPY --chown=nonroot:nonroot logging.json .
 
 ARG PORT
 ENV PORT=${PORT}
 EXPOSE ${PORT}
 
-CMD [ "-m", "app.main" ]
+CMD [ "-m", "worker.worker" ]
