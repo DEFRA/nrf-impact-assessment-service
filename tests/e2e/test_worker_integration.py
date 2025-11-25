@@ -69,7 +69,12 @@ def test_worker_integration(docker_services, sqs_client):  # noqa: ARG001
             time.sleep(2)
 
     # Step 2: Send test message to SQS
-    queue_url = "http://localhost:4566/000000000000/nrf-assessment-queue"
+    # Look up queue URL from queue name (CDP pattern)
+    queue_url_response = sqs_client.get_queue_url(
+        QueueName="nrf_impact_assessment_queue"
+    )
+    queue_url = queue_url_response["QueueUrl"]
+
     test_message = {"test": "hello world", "timestamp": time.time()}
 
     sqs_client.send_message(
