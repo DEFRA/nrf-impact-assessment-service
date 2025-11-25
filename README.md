@@ -48,8 +48,8 @@ The worker uses Pydantic's `BaseSettings` for configuration management in `worke
 
 **Key configuration:**
 - `AWS_REGION`: AWS region (default: `eu-west-2`)
-- `AWS_ENDPOINT_URL`: AWS endpoint (for LocalStack in local dev)
-- `AWS_SQS_QUEUE_URL`: SQS queue URL for job messages
+- `AWS_ENDPOINT_URL`: AWS endpoint (for LocalStack in local dev only)
+- `AWS_SQS_QUEUE_NAME`: SQS queue name (default: `nrf_impact_assessment_queue`)
 
 In CDP, environment variables need to be set using CDP conventions:
 - [CDP App Config](https://github.com/DEFRA/cdp-documentation/blob/main/how-to/config.md)
@@ -171,8 +171,14 @@ The worker will:
 **Send test message:**
 
 ```bash
+# Get queue URL (CDP pattern)
+QUEUE_URL=$(aws --endpoint-url=http://localhost:4566 sqs get-queue-url \
+  --queue-name nrf_impact_assessment_queue \
+  --query 'QueueUrl' --output text)
+
+# Send message
 aws --endpoint-url=http://localhost:4566 sqs send-message \
-  --queue-url http://localhost:4566/000000000000/nrf-assessment-queue \
+  --queue-url "$QUEUE_URL" \
   --message-body '{"test": "hello world"}'
 ```
 

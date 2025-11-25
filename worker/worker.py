@@ -196,9 +196,10 @@ def main() -> None:
 
         config = WorkerConfig()
         logger.info(
-            "Configuration loaded: region=%s, endpoint=%s",
+            "Configuration loaded: region=%s, endpoint=%s, queue_name=%s",
             config.region,
             config.endpoint_url,
+            config.sqs_queue_name,
         )
 
         # Before starting health server, check if port is available
@@ -213,6 +214,12 @@ def main() -> None:
         )
         logger.info("SQS client initialized")
 
+        # Look up queue URL from queue name (CDP pattern)
+        logger.info("Looking up queue URL for: %s", config.sqs_queue_name)
+        queue_url_response = sqs_client.get_queue_url(QueueName=config.sqs_queue_name)
+        sqs_queue_url = queue_url_response["QueueUrl"]
+        logger.info("Queue URL resolved: %s", sqs_queue_url)
+
         health_thread = threading.Thread(
             target=run_health_server,
             args=(config.health_port,),
@@ -222,7 +229,7 @@ def main() -> None:
         health_thread.start()
         logger.info("Health check server started in background thread")
 
-        worker = Worker(sqs_client=sqs_client, sqs_queue_url=config.sqs_queue_url)
+        worker = Worker(sqs_client=sqs_client, sqs_queue_url=sqs_queue_url)
         worker.run()
 
     except Exception:
