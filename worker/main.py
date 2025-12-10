@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import multiprocessing
 import signal
 import sys
 
@@ -12,6 +11,7 @@ import boto3
 from worker.config import WorkerConfig
 from worker.health import run_health_server
 from worker.state import create_shared_state
+from worker.utils import managed_process
 from worker.worker import Worker
 
 logging.basicConfig(
@@ -39,49 +39,48 @@ def main() -> None:
 
     # Create shared state for IPC
     state = create_shared_state()
-    health_process = None
 
     try:
-        # Start health server process
-        health_process = multiprocessing.Process(
+        # Start health server process using the context manager
+        with managed_process(
             target=run_health_server,
             args=(state, config.health_port),
             name="health-server",
-            daemon=False,  # Want explicit cleanup
-        )
-        health_process.start()
-        logger.info("Health server process started (PID: %s)", health_process.pid)
+        ) as health_process:
+            logger.info("Health server process started (PID: %s)", health_process.pid)
 
-        # Initialize SQS client in main process
-        sqs_client = boto3.client(
-            "sqs",
-            region_name=config.region,
-            endpoint_url=config.endpoint_url,
-        )
-        logger.info("SQS client initialized")
+            # Initialize SQS client in main process
+            sqs_client = boto3.client(
+                "sqs",
+                region_name=config.region,
+                endpoint_url=config.endpoint_url,
+            )
+            logger.info("SQS client initialized")
 
-        # Look up queue URL from queue name (CDP pattern)
-        logger.info("Looking up queue URL for: %s", config.sqs_queue_name)
-        queue_url_response = sqs_client.get_queue_url(QueueName=config.sqs_queue_name)
-        sqs_queue_url = queue_url_response["QueueUrl"]
-        logger.info("Queue URL resolved: %s", sqs_queue_url)
+            # Look up queue URL from queue name (CDP pattern)
+            logger.info("Looking up queue URL for: %s", config.sqs_queue_name)
+            queue_url_response = sqs_client.get_queue_url(
+                QueueName=config.sqs_queue_name
+            )
+            sqs_queue_url = queue_url_response["QueueUrl"]
+            logger.info("Queue URL resolved: %s", sqs_queue_url)
 
-        # Create worker with shared state
-        worker = Worker(
-            sqs_client=sqs_client,
-            sqs_queue_url=sqs_queue_url,
-            state=state,
-            wait_time_seconds=config.sqs_wait_time_seconds,
-        )
+            # Create worker with shared state
+            worker = Worker(
+                sqs_client=sqs_client,
+                sqs_queue_url=sqs_queue_url,
+                state=state,
+                wait_time_seconds=config.sqs_wait_time_seconds,
+            )
 
-        # Install signal handlers that call worker.stop()
-        signal.signal(signal.SIGTERM, lambda _sig, _frame: worker.stop())
-        signal.signal(signal.SIGINT, lambda _sig, _frame: worker.stop())
+            # Install signal handlers that call worker.stop()
+            signal.signal(signal.SIGTERM, lambda _sig, _frame: worker.stop())
+            signal.signal(signal.SIGINT, lambda _sig, _frame: worker.stop())
 
-        logger.info("Starting worker in main process...")
-        worker.run()
+            logger.info("Starting worker in main process...")
+            worker.run()
 
-        logger.info("Worker stopped, cleaning up...")
+            logger.info("Worker stopped, cleaning up...")
 
     except Exception as e:
         logger.exception("Fatal error in main process: %s", e)
@@ -90,12 +89,6 @@ def main() -> None:
         sys.exit(1)
 
     finally:
-        # Stop health server
-        if health_process and health_process.is_alive():
-            logger.info("Stopping health server...")
-            health_process.terminate()
-            health_process.join(timeout=5)
-
         logger.info("Shutdown complete")
         sys.exit(0)
 

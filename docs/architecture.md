@@ -20,26 +20,33 @@ The NRF Impact Assessment Worker is a long-running ECS task that:
 ## Process architecture
 
 ```
-┌─────────────────────────────────────────┐
-│         Main Process                    │
+┌────────────────────────────────────────┐
+│         Main Process (Worker)          │
 │  - Signal handlers (SIGTERM/SIGINT)    │
 │  - Creates shared state                │
-│  - Starts child processes               │
-│  - Coordinates shutdown                 │
-└─────────────────────────────────────────┘
-           │                    │
-           ▼                    ▼
-┌──────────────────┐   ┌──────────────────┐
-│ Worker Process   │   │ Health Process   │
-│                  │   │                  │
-│ - SQS polling    │   │ - Flask+Waitress │
-│ - Heavy geo work │◄──┤ - /health route  │
-│ - Updates:       │   │ - Reads shared   │
-│   • status       │   │   state only     │
-│   • heartbeat    │   │                  │
-│   • task timing  │   │                  │
-└──────────────────┘   └──────────────────┘
+│  - Spawns health server child process  │
+│  - SQS polling                         │
+│  - Heavy geo work                      │
+│  - Updates:                            │
+│    • status                            │
+│    • heartbeat                         │
+│    • task timing                       │
+└────────────────────────────────────────┘
+           │
+           │ (spawns)
+           ▼
+┌──────────────────┐
+│ Health Process   │
+│                  │
+│ - Flask+Waitress │
+│ - /health route  │
+│ - Reads shared   │
+│   state only     │
+│                  │
+└──────────────────┘
 ```
+
+**Two-process design:** Main process runs the worker directly and spawns a single child process for the health server. This is simpler and more efficient than a three-process orchestrator pattern.
 
 ### Why multiprocessing?
 
@@ -169,37 +176,28 @@ All behavior configurable via environment variables:
 ### Error classification
 
 **Fatal errors** (mark as error, re-raise):
-- `QueueDoesNotExist`: Queue configuration issue
-- `AccessDenied`: IAM permissions issue
-- `InvalidAccessKeyId`: Credentials issue
-- `SignatureDoesNotMatch`: AWS auth issue
+- `QueueDoesNotExist`: Queue not found or deleted
+- `InvalidAccessKeyId`: AWS credentials invalid
+- `SignatureDoesNotMatch`: Request signature verification failed
+
+**Note:** If using an encrypted queue, add `KmsAccessDenied`, `KmsDisabled`, `KmsNotFound` to fatal errors list.
 
 **Transient errors** (log, retry in 5s):
 - Network timeouts (`BotoCoreError`)
-- Throttling errors
-- Temporary service issues
+- Throttling (`RequestThrottled`)
+- All other `ClientError` codes not in fatal list
 
 **Unexpected errors** (log with traceback, retry in 5s):
-- Processing errors (logged but worker keeps running)
-- Transient issues should not crash the worker
+- Any other exception type
 
-### Error flow
+### Error handling behavior
 
-```
-Exception raised
-    ↓
-Is it KeyboardInterrupt? → Yes → Log, re-raise (graceful shutdown)
-    ↓ No
-Is it ClientError? → Yes → Check error code
-    ↓                        ↓
-    |                  Fatal? → Yes → Mark status=-1, re-raise
-    |                        ↓ No
-    |                  Transient → Log, sleep 5s, continue
-    ↓ No
-Is it BotoCoreError? → Yes → Log "network/timeout", sleep 5s, continue
-    ↓ No
-Generic Exception → Log with traceback, sleep 5s, continue
-```
+- **Fatal errors**: Mark worker as failed (status=-1) and terminate
+- **Transient errors**: Log warning, sleep 5s, retry
+- **Unexpected errors**: Log with full traceback, sleep 5s, retry
+- **KeyboardInterrupt**: Re-raised for graceful shutdown (local development only)
+
+This approach keeps the worker resilient to temporary issues while failing fast on unrecoverable configuration or authentication problems.
 
 See `worker/worker.py:_handle_client_error()` for implementation.
 
@@ -207,12 +205,10 @@ See `worker/worker.py:_handle_client_error()` for implementation.
 
 ## Shutdown sequence
 
-1. **Signal received** (SIGTERM/SIGINT) → Main process sets `shutdown_event`
-2. **Worker process** detects event → Stops polling loop → Sets status=0
-3. **Main process** waits up to 30s for worker to finish current message
-4. **Timeout fallback** → Terminate worker process
-5. **Health server** terminated
-6. **Main process** exits cleanly
+1. **Signal received** (SIGTERM/SIGINT) → Signal handler calls `worker.stop()`
+2. **Main process (worker)** stops polling loop → Sets status=0 → Finishes current message
+3. **Main process** exits → Health server child process terminated via context manager
+4. **Clean exit**
 
 **Design goal:** Allow in-progress message to complete before terminating.
 

@@ -155,10 +155,9 @@ class Worker:
         """
         # Fatal errors - cannot recover, mark as error and re-raise
         fatal_errors = {
-            "QueueDoesNotExist": "Queue does not exist, cannot continue",
-            "AccessDenied": "Access denied to queue",
-            "InvalidAccessKeyId": "Invalid AWS access key",
-            "SignatureDoesNotMatch": "AWS signature does not match",
+            "QueueDoesNotExist": "Queue does not exist or was deleted",
+            "InvalidAccessKeyId": "AWS credentials invalid",
+            "SignatureDoesNotMatch": "Request signature verification failed",
         }
 
         if error_code in fatal_errors:
