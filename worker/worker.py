@@ -16,6 +16,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Default expected duration for task processing (seconds)
+# Conservative estimate for CPU-intensive geospatial work
+# Tune based on actual P95 processing times in production
+DEFAULT_TASK_DURATION = 300.0  # 5 minutes
+
 
 class SQSMessage(BaseModel):
     """Validated SQS message structure."""
@@ -209,11 +214,9 @@ class Worker:
         logger.info("Message body: %s", body)
 
         # Set task timing for adaptive timeout during processing
-        # Expected duration will be tuned based on actual processing times
-        # For now, use a conservative estimate (5 minutes for CPU-intensive geo work)
         if self.state:
             self.state.task_start_time.value = time.time()
-            self.state.expected_task_duration.value = 300.0  # 5 minutes
+            self.state.expected_task_duration.value = DEFAULT_TASK_DURATION
 
         try:
             # TODO: Add actual impact assessment processing logic here
