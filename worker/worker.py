@@ -208,6 +208,21 @@ class Worker:
         logger.info("Received message: %s", message_id)
         logger.info("Message body: %s", body)
 
-        # TODO: Add actual impact assessment processing logic here
+        # Set task timing for adaptive timeout during processing
+        # Expected duration will be tuned based on actual processing times
+        # For now, use a conservative estimate (5 minutes for CPU-intensive geo work)
+        if self.state:
+            self.state.task_start_time.value = time.time()
+            self.state.expected_task_duration.value = 300.0  # 5 minutes
+
+        try:
+            # TODO: Add actual impact assessment processing logic here
+            pass
+        finally:
+            # Clear task timing and update heartbeat after processing completes
+            if self.state:
+                self.state.task_start_time.value = 0.0
+                self.state.expected_task_duration.value = 0.0
+                self.state.last_heartbeat.value = time.time()
 
         self._delete_message(message_id, receipt_handle)
