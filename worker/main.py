@@ -32,7 +32,7 @@ def main() -> None:
     # Load configuration
     config = WorkerConfig()
     logger.info(
-        "Configuration loaded: queue_name=%s, healthcheck port=%s",
+        "Configuration loaded: queue_name=%s, health check port=%s",
         config.sqs_queue_name,
         config.health_port,
     )
