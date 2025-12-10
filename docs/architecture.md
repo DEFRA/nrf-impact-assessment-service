@@ -125,21 +125,25 @@ Where:
 - `heartbeat_age`: Current time - last heartbeat timestamp
 - `timeout`: Configurable via `HEARTBEAT_TIMEOUT` (default: 180s)
 
-### Adaptive timeout (optional)
+### Adaptive timeout
 
-For mixed workloads with varying processing times, the shared state includes:
+The health check supports adaptive timeouts for long-running tasks. The shared state includes:
 - `task_start_time`: When long task began (0 if idle)
 - `expected_task_duration`: Estimated duration (0 if idle)
 
-Health server can then use task-aware timeout:
+Health server uses task-aware timeout:
 ```python
-if task_in_progress:
+if task_start > 0 and expected_duration > 0:
+    # Long task in progress
     effective_timeout = expected_duration * TASK_TIMEOUT_BUFFER
+    is_overtime = task_elapsed > effective_timeout
 else:
+    # Normal operation
     effective_timeout = DEFAULT_HEARTBEAT_TIMEOUT
+    is_overtime = heartbeat_age > effective_timeout
 ```
 
-**Current implementation:** Uses simple fixed timeout (180s) for all operations. Adaptive timeout available for future enhancement if needed.
+**Current usage:** While the adaptive timeout logic is implemented, the worker does not yet set `task_start_time` or `expected_task_duration`, so the default fixed timeout (180s) is used for all operations. This will be utilized when Phase 4 (business logic) implements long-running assessment processing.
 
 ---
 
