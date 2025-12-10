@@ -35,3 +35,6 @@ def managed_process(
         if process.is_alive():
             process.terminate()
             process.join(timeout=5)
+            if process.is_alive():
+                process.kill()
+                process.join()
