@@ -15,9 +15,14 @@ logger = logging.getLogger(__name__)
 DEFAULT_HEARTBEAT_TIMEOUT = int(
     os.getenv("HEARTBEAT_TIMEOUT", "180")
 )  # seconds (3 minutes)
-TASK_TIMEOUT_BUFFER = float(
-    os.getenv("TASK_TIMEOUT_BUFFER", "1.5")
-)  # Allow 50% extra time for long tasks
+try:
+    TASK_TIMEOUT_BUFFER = float(os.getenv("TASK_TIMEOUT_BUFFER", "1.5"))
+except ValueError:
+    logger.warning(
+        "Invalid TASK_TIMEOUT_BUFFER value '%s', using default 1.5",
+        os.getenv("TASK_TIMEOUT_BUFFER")
+    )
+    TASK_TIMEOUT_BUFFER = 1.5  # Allow 50% extra time for long tasks
 
 
 def create_health_app(state: WorkerState) -> Flask:
