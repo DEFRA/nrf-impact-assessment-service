@@ -84,8 +84,7 @@ def main() -> None:
 
     except Exception as e:
         logger.exception("Fatal error in main process: %s", e)
-        if state:
-            state.status_flag.value = -1  # Mark as errored
+        state.status_flag.value = -1  # Mark as errored
         sys.exit(1)
 
     finally:
