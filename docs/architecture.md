@@ -55,8 +55,6 @@ The NRF Impact Assessment Worker is a long-running ECS task that:
 | **Threading** | Health endpoint becomes unresponsive during CPU work due to Python GIL |
 | **Multiprocessing** | ✅ Health server always responsive, can detect worker hangs/crashes |
 
-See [cdp-adaptation.md](./cdp-adaptation.md) for full rationale.
-
 ---
 
 ## Message processing strategy
