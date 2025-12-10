@@ -19,5 +19,6 @@ class WorkerConfig(BaseSettings):
     def validate_wait_time(cls, v: int) -> int:
         """Validate SQS wait time is within AWS limits (0-20 seconds)."""
         if not 0 <= v <= 20:
-            raise ValueError("Wait time must be between 0 and 20 seconds")
+            msg = f"Wait time must be between 0 and 20 seconds, got {v}"
+            raise ValueError(msg)
         return v
