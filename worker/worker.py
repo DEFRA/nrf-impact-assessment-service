@@ -41,16 +41,6 @@ class SQSMessage(BaseModel):
         populate_by_name = True
 
 
-class SQSMessageResponse(BaseModel):
-    """Validated SQS receive_message response structure."""
-
-    messages: list[SQSMessage] | None = Field(default=None, alias="Messages")
-
-    class Config:
-        extra = "allow"
-        populate_by_name = True
-
-
 class Worker:
     """SQS polling worker with graceful shutdown and health reporting.
 
@@ -110,11 +100,11 @@ class Worker:
                         WaitTimeSeconds=self.wait_time_seconds,
                     )
 
-                    validated_response = SQSMessageResponse(**response)
-                    messages = validated_response.messages or []
-
+                    # AWS returns Messages as a list, extract single message if present
+                    messages = response.get("Messages", [])
                     if messages:
-                        self._process_message(messages[0])
+                        message = SQSMessage(**messages[0])
+                        self._process_message(message)
                     else:
                         logger.debug(
                             "No messages received (%ss poll timeout)",

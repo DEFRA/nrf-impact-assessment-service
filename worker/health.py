@@ -123,7 +123,7 @@ def run_health_server(state: WorkerState, port: int) -> None:
 
     app = create_health_app(state)
 
-    # Waitress for production-grade WSGI serving
+    # Waitress for WSGI serving
     # Note: shutdown_event could be used for graceful shutdown if needed,
     # but typically the health server is terminated when main process exits
     logger.info("Health server ready on http://0.0.0.0:%s/health", port)  # noqa: S104
