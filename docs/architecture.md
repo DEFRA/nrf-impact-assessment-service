@@ -246,5 +246,4 @@ Increasing instance size (more CPU/RAM) has limited value because:
 
 ## References
 
-- [CDP Platform Adaptation](./cdp-adaptation.md) - Multiprocessing health check design rationale
 - [AWS SQS Best Practices](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-best-practices.html)
