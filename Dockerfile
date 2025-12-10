@@ -26,7 +26,7 @@ ARG PORT_DEBUG=8086
 ENV PORT=${PORT}
 EXPOSE ${PORT} ${PORT_DEBUG}
 
-CMD [ "-m", "worker.worker" ]
+CMD [ "-m", "worker.main" ]
 
 FROM defradigital/python:${PARENT_VERSION} AS production
 
@@ -57,4 +57,4 @@ ARG PORT
 ENV PORT=${PORT}
 EXPOSE ${PORT}
 
-CMD [ "-m", "worker.worker" ]
+CMD [ "-m", "worker.main" ]

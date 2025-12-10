@@ -14,7 +14,17 @@ def docker_services():
     """Start docker compose services for testing."""
     # Start services with worker profile
     subprocess.run(
-        ["docker", "compose", "--profile", "worker", "up", "-d", "--build"],
+        [
+            "docker",
+            "compose",
+            "-f",
+            "compose.yml",
+            "--profile",
+            "worker",
+            "up",
+            "-d",
+            "--build",
+        ],
         check=True,
         capture_output=True,
     )
@@ -26,7 +36,7 @@ def docker_services():
 
     # Cleanup
     subprocess.run(
-        ["docker", "compose", "--profile", "worker", "down", "-v"],
+        ["docker", "compose", "-f", "compose.yml", "--profile", "worker", "down", "-v"],
         check=True,
         capture_output=True,
     )
@@ -86,7 +96,7 @@ def test_worker_integration(docker_services, sqs_client):  # noqa: ARG001
     time.sleep(5)
 
     result = subprocess.run(
-        ["docker", "compose", "logs", "worker"],
+        ["docker", "compose", "-f", "compose.yml", "logs", "worker"],
         capture_output=True,
         text=True,
     )

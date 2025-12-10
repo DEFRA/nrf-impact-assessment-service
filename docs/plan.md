@@ -1,179 +1,163 @@
-# Worker integration plan
+# Production Migration Plan
 
-**Date:** 2025-10-30
-**Objective:** Migrate NRF Impact Assessment Worker functionality into this CDP-compliant service codebase
-
-## Context
-
-We have two codebases:
-
-1. **nrf-impact-assessment-service** (this repo) - FastAPI template from CDP, currently minimal
-2. **nrf-impact-assessment-worker** (separate repo) - Production-ready worker with full assessment logic
-
-**Goal:** Replace the FastAPI app with the worker functionality while maintaining CDP platform compliance (health endpoint).
-
-## Strategy
-
-### Preserve the worker, add minimal HTTP
-
-The worker is our primary concern. We only need HTTP for platform compliance:
-
-- **Primary function**: Long-running SQS polling worker
-- **Secondary function**: HTTP `/health` endpoint for CDP monitoring
-- **Architecture**: Flask-in-daemon-thread pattern (see `cdp-adaptation.md`)
-
-### Incremental migration approach
-
-Rather than a big-bang migration, we'll build incrementally:
-
-**Phase 1: Hello world worker** ✓ (this phase)
-- Create minimal worker structure
-- Simple SQS message logger
-- Flask health endpoint
-- Prove the pattern works
-
-**Phase 2: Copy core domain**
-- Port worker code from other repo
-- models/, calculators/, repositories/
-- Keep tests alongside
-
-**Phase 3: Add dependencies**
-- PostgreSQL/PostGIS in compose.yml
-- S3 integration
-- Full AWS config
-
-**Phase 4: Full integration**
-- Complete processor logic
-- Email/financial services
-- Production configuration
-
-## Phase 1: Hello world worker (current)
-
-### What we're building
-
-```
-worker/
-├── __init__.py
-├── health.py          # Flask health endpoint (from cdp-adaptation.md)
-├── worker.py          # Main worker loop + entry point
-└── config.py          # Basic AWS/SQS config
-```
-
-### Key files
-
-**worker/health.py** - Flask app with Waitress WSGI server for `/health` endpoint
-
-**worker/worker.py** - Main worker with:
-- SQS polling loop (receives messages, logs them, deletes them)
-- Signal handling (SIGTERM/SIGINT for graceful shutdown)
-- Flask health server started in daemon thread
-- Worker loop runs in main thread
-
-**worker/config.py** - Configuration using Pydantic settings:
-- AWS region and endpoint URL (for LocalStack)
-- SQS queue URL
-- Health server port
-
-### Infrastructure changes
-
-**pyproject.toml** - Add minimal dependencies: boto3, flask, waitress, pydantic-settings
-
-**Dockerfile** - Change CMD to: `["-m", "worker.worker"]`
-
-**compose.yml** - Keep LocalStack for SQS, remove MongoDB for now
-
-### Success criteria
-
-- ✅ Worker starts without errors
-- ✅ Health endpoint responds on `/health`
-- ✅ Worker polls SQS every 20 seconds
-- ✅ Messages are received, logged, and deleted
-- ✅ Graceful shutdown on SIGTERM/SIGINT
-- ✅ End-to-end test passes
-
-### End-to-end test
-
-Create automated test that verifies the complete flow:
-
-**tests/e2e/test_worker_integration.py** - Docker-based integration test:
-- Uses pytest with docker-compose fixture
-- Starts LocalStack + worker service
-- Creates SQS queue
-- Sends test message
-- Polls docker logs for expected output
-- Verifies message was deleted from queue
-- Checks health endpoint responds
-
-Run with: `uv run pytest tests/e2e/ -v`
-
-This gives confidence the whole system works before proceeding to phase 2.
-
-## Phase 2: Copy core domain (next steps)
-
-Once phase 1 works, we'll:
-
-1. **Copy worker code from other repo** - All modules: models/, calculators/, repositories/, services/, validation/, aws/, utils/, tests/
-
-2. **Update dependencies** - Add: geopandas, sqlalchemy, geoalchemy2, psycopg2-binary, alembic, email-validator
-
-3. **Replace hello world with real processor** - Import AssessmentJobProcessor, initialize PostGIS repository, process real jobs
-
-4. **Add PostgreSQL to compose.yml** - Use postgis/postgis:16-3.4 image (matching worker repo)
-
-5. **Add database migrations** - Copy alembic/ directory
-
-6. **Run tests to verify** - All 90 tests should pass
-
-## Phase 3: Add full AWS integration
-
-- S3 bucket configuration
-- Update compose/aws.env with S3 settings
-- Add LocalStack S3 initialization script
-- Test full S3 → SQS → Worker → Assessment flow
-
-## Phase 4: Production readiness
-
-- Correlation ID tracing (see cdp-adaptation.md notes)
-- Enhanced health metrics (optional)
-- CloudWatch logging configuration
-- Production environment variables
-- Documentation updates
-
-## References
-
-- `docs/cdp-adaptation.md` - Architectural decision for Flask-in-thread pattern
-- `nrf-impact-assessment-worker/README.md` - Original worker documentation
-- `nrf-impact-assessment-worker/worker/worker.py` - Reference implementation
-
-## Notes
-
-### Why not keep FastAPI?
-
-The CDP template uses FastAPI, but we don't need it:
-
-- **Worker is primary concern**: SQS polling, not HTTP requests
-- **FastAPI is overkill**: We only need `/health` endpoint
-- **Sync vs async**: Worker uses synchronous boto3/SQLAlchemy, no need for async complexity
-- **Flask is simpler**: ~30 lines for health endpoint vs full FastAPI app
-
-### Why Flask in thread vs FastAPI lifespan?
-
-Both would work, but Flask-in-thread is simpler for this use case:
-
-- Worker remains synchronous (no async/await needed)
-- Clear separation: HTTP in thread, worker in main
-- Worker crash = process exits = ECS restarts
-- No async event loop management needed
-
-### Next steps after phase 1
-
-Wait for phase 1 to work before proceeding. This ensures:
-- Pattern is validated
-- Infrastructure is correct
-- Team understands the approach
-- Can incrementally add complexity
+**Date:** 2025-12-10
+**Status:** Multiprocess health check architecture complete
+**Objective:** Migrate NRF Impact Assessment production functionality into this service
 
 ---
 
-**Status**: Phase 1 in progress
-**Last updated**: 2025-10-30
+## Context
+
+**This repository (nrf-impact-assessment-service)** is the production application with:
+- ✅ Multiprocess architecture (main worker process + health server child process)
+- ✅ CDP platform compliance (HTTP `/health` endpoint)
+- ✅ SQS polling infrastructure
+- ✅ Production-grade error handling and shutdown
+
+**Source repository (nrf-impact-assessment-worker)** contains:
+- Production impact assessment logic (geopandas, GDAL, shapely)
+- Database models and repositories (PostgreSQL/PostGIS)
+- Business calculators and validation
+- Test suite
+- **Alembic migrations** (needs converting to Liquibase for CDP)
+
+**Goal:** Migrate production functionality piece by piece into this repo.
+
+---
+
+## High-level migration
+
+### Phase 1: Core infrastructure ✅ COMPLETE
+- Multiprocess worker architecture
+- Health check endpoint with heartbeat monitoring
+- SQS message polling (single message pattern)
+- Error handling and graceful shutdown
+- Integration tests with LocalStack
+
+### Phase 2: Database layer (next)
+- Add PostgreSQL/PostGIS to `compose.yml` for local development
+- Copy database models from source repo
+- Copy SQLAlchemy repositories
+- **Convert Alembic migrations to Liquibase** (CDP requirement)
+- Add database dependencies to `pyproject.toml`
+- Verify connection and basic CRUD operations
+
+### Phase 3: Integration with nrf-backend (new work)
+**Note:** This phase is new - not implemented in spike repo. The upstream architecture was finalized after the initial exploration.
+
+**Processing flow:**
+1. Receive SQS message (trigger with assessment reference)
+2. HTTP GET assessment details from nrf-backend (geometry + request data)
+3. Process assessment (business logic)
+4. HTTP POST results back to nrf-backend
+5. Send email notification
+
+**Implementation tasks:**
+- Implement HTTP client for communicating with nrf-backend service
+- GET assessment details endpoint (retrieves geometry and request data)
+- POST assessment results endpoint (sends back outcome)
+- Handle large geometries via HTTP (avoid SQS message size limits)
+- Wire up processing flow in `_process_message()`
+
+### Phase 4: Business logic
+- Copy assessment calculators from source repo
+- Copy validation logic
+- Copy domain models
+- Implement full assessment processing workflow
+- Replace TODO in `_process_message()` with actual logic
+
+### Phase 5: Notification services
+- Copy email/notification services from source repo
+- Add notification dependencies
+- Wire up to assessment completion
+- Test notification delivery
+
+### Phase 6 (Optional): S3 Integration
+- S3 file upload/download capability (for future user file upload journey)
+- Currently no user journey requires this
+- Defer until frontend adds file upload functionality
+
+### Phase 7: Test coverage
+- Copy/adapt test suite from source repo
+- Adapt tests for new architecture
+- Add integration tests for multiprocess behavior
+
+---
+
+## Important: Database migrations
+
+**CDP Platform uses Liquibase (not Alembic) for schema migrations.**
+
+### Migration requirements
+
+The source repo uses Alembic for database migrations. CDP requires Liquibase with specific constraints:
+
+- Changelog must be in XML format (named `db.changelog.xml`)
+- Stored in repository at `./changelog/db.changelog.xml`
+- Published via GitHub Actions (see CDP docs)
+- Applied via CDP Portal interface
+
+### Phase 2 approach
+
+1. Copy database models from source repo (keep as SQLAlchemy)
+2. Convert Alembic migrations to Liquibase XML format
+3. Set up `./changelog/db.changelog.xml` structure
+4. Add GitHub workflow for publishing migrations (`.github/workflows/publish-db-schema.yml`)
+5. Test migrations locally with Liquibase CLI before publishing
+
+### References
+
+- [CDP Relational Databases Guide](https://defra-digital-dev.github.io/cdp-user-guide/applications/relational-databases.html)
+- [Liquibase Documentation](https://docs.liquibase.com/home.html)
+- [CDP Example Repository](https://github.com/DEFRA/cdp-example-node-postgres-be) - See `changelog/` directory
+
+---
+
+## Current architecture
+
+See `docs/architecture.md` for complete details.
+
+**Key points:**
+- 2-process design: main process runs worker, spawns health server child
+- Shared state via `multiprocessing.Value` for IPC
+- Single message per loop (horizontal scaling pattern)
+- Fatal errors terminate, transient errors retry
+
+---
+
+## Migration strategy
+
+**Incremental approach:**
+1. Complete one phase at a time
+2. Verify functionality works before proceeding
+3. Keep `main` branch deployable throughout
+4. Test each integration point
+
+**Key principle:** Don't break existing health check/worker infrastructure while adding functionality.
+
+---
+
+## Next steps (Phase 2)
+
+1. **Verify CDP database details** - PostgreSQL/PostGIS already provisioned (version TBD)
+2. Add PostgreSQL/PostGIS to `compose.yml` for local dev (match CDP version when confirmed)
+3. Copy `models/` directory from source repo
+4. Copy `repositories/` directory from source repo
+5. **Convert Alembic migrations to Liquibase XML**
+6. Create `./changelog/db.changelog.xml` with converted migrations
+7. Add SQLAlchemy, GeoAlchemy2, psycopg2-binary to dependencies
+8. Set up GitHub workflow for publishing Liquibase migrations
+9. Create simple test that connects to database and runs a query
+10. Test migrations locally before publishing
+
+---
+
+## References
+
+- `docs/architecture.md` - Current multiprocess architecture
+- Source repo: nrf-impact-assessment-worker (non-public)
+- CDP Platform docs: https://defra-digital-dev.github.io/cdp-user-guide/
+
+---
+
+**Last Updated:** 2025-12-10

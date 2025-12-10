@@ -1,20 +1,14 @@
 """NRF Impact Assessment Worker - SQS polling with health endpoint."""
 
 import logging
-import signal
-import socket
-import sys
-import threading
 import time
 from typing import Any
 
-import boto3
 import botocore.exceptions
 from mypy_boto3_sqs import SQSClient
 from pydantic import BaseModel, Field
 
-from worker.config import WorkerConfig
-from worker.health import run_health_server
+from worker.state import WorkerState
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,8 +16,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Default expected duration for task processing (seconds)
+# Conservative estimate for CPU-intensive geospatial work
+# Tune based on actual P95 processing times in production
+DEFAULT_TASK_DURATION = 300.0  # 5 minutes
 
-# SQS message models
+
 class SQSMessage(BaseModel):
     """Validated SQS message structure."""
 
@@ -48,53 +46,135 @@ class SQSMessage(BaseModel):
         populate_by_name = True
 
 
-class SQSMessageResponse(BaseModel):
-    """Validated SQS receive_message response structure."""
-
-    messages: list[SQSMessage] | None = Field(default=None, alias="Messages")
-
-    class Config:
-        extra = "allow"
-        populate_by_name = True
-
-
-def is_port_available(port: int) -> bool:
-    """Check if a port is available."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        try:
-            s.bind(("127.0.0.1", port))
-            return True
-        except OSError:
-            return False
-
-
 class Worker:
-    """SQS polling worker with graceful shutdown."""
+    """SQS polling worker with graceful shutdown and health reporting.
 
-    def __init__(self, sqs_client: SQSClient, sqs_queue_url: str):
+    Integrates with shared state for multiprocess health monitoring.
+    Updates heartbeat regularly to signal liveness to health server process.
+    """
+
+    def __init__(
+        self,
+        sqs_client: SQSClient,
+        sqs_queue_url: str,
+        state: WorkerState | None = None,
+        wait_time_seconds: int = 20,
+    ):
         """Initialize worker.
 
         Args:
             sqs_client: Boto3 SQS client
             sqs_queue_url: SQS queue URL to poll
+            state: Shared state for health reporting (optional, for multiprocess mode)
+            wait_time_seconds: SQS long polling wait time in seconds (max: 20)
         """
         self.sqs_client = sqs_client
         self.sqs_queue_url = sqs_queue_url
+        self.state = state
+        self.wait_time_seconds = wait_time_seconds
         self.running = True
 
-        # Register signal handlers for graceful shutdown
-        signal.signal(signal.SIGTERM, self._handle_shutdown)
-        signal.signal(signal.SIGINT, self._handle_shutdown)
+    def run(self) -> None:
+        """Main polling loop with heartbeat updates for health monitoring.
 
-    def _handle_shutdown(self, signum, frame):  # noqa: ARG002
-        """Handle shutdown signals.
+        Updates shared state to signal liveness to health server process:
+        - Sets status to 1 (running) on startup
+        - Updates heartbeat timestamp after each loop iteration
+        - Sets status to -1 on unrecoverable error
+        - Sets status to 0 on clean shutdown
+        """
+        logger.info("Worker process started, polling for messages...")
+        logger.info("Queue URL: %s", self.sqs_queue_url)
+
+        if self.state:
+            self.state.status_flag.value = 1  # Running
+            self.state.last_heartbeat.value = time.time()
+            logger.info("Worker state initialized: status=running")
+
+        try:
+            while self.running:
+                try:
+                    if self.state:
+                        self.state.last_heartbeat.value = time.time()
+
+                    # Single message per loop - see docs/architecture.md for rationale
+                    # (prefer horizontal scaling over batch processing)
+                    response = self.sqs_client.receive_message(
+                        QueueUrl=self.sqs_queue_url,
+                        MaxNumberOfMessages=1,
+                        WaitTimeSeconds=self.wait_time_seconds,
+                    )
+
+                    # AWS returns Messages as a list, extract single message if present
+                    messages = response.get("Messages", [])
+                    if messages:
+                        message = SQSMessage(**messages[0])
+                        self._process_message(message)
+                    else:
+                        logger.debug(
+                            "No messages received (%ss poll timeout)",
+                            self.wait_time_seconds,
+                        )
+
+                except KeyboardInterrupt:
+                    logger.info("Keyboard interrupt received, shutting down...")
+                    raise
+
+                except botocore.exceptions.ClientError as e:
+                    error_code = e.response.get("Error", {}).get("Code", "")
+                    self._handle_client_error(error_code)
+
+                except botocore.exceptions.BotoCoreError as e:
+                    logger.warning(
+                        "AWS SDK error (network/timeout): %s, retrying in 5s...", e
+                    )
+                    time.sleep(5)
+
+                except Exception as e:
+                    logger.exception("Unexpected error processing message: %s", e)
+                    logger.info("Retrying in 5s...")
+                    time.sleep(5)
+
+        finally:
+            logger.info("Worker shutting down")
+            if self.state:
+                self.state.status_flag.value = 0
+                logger.info("Worker state updated: status=stopped")
+
+    def stop(self) -> None:
+        """Request worker to stop gracefully.
+
+        Called by signal handlers or shutdown coordinator.
+        """
+        logger.info("Stop requested, shutting down gracefully...")
+        self.running = False
+
+    def _handle_client_error(self, error_code: str) -> None:
+        """Handle AWS ClientError based on error code.
 
         Args:
-            signum: Signal number
-            frame: Current stack frame
+            error_code: AWS error code from the exception
+
+        Raises:
+            Exception: Re-raises for fatal errors (queue not found, auth failures)
         """
-        logger.info("Received signal %s, shutting down gracefully...", signum)
-        self.running = False
+        # Fatal errors - cannot recover, mark as error and re-raise
+        fatal_errors = {
+            "QueueDoesNotExist": "Queue does not exist or was deleted",
+            "InvalidAccessKeyId": "AWS credentials invalid",
+            "SignatureDoesNotMatch": "Request signature verification failed",
+            "AccessDenied": "Insufficient IAM permissions",
+        }
+
+        if error_code in fatal_errors:
+            logger.error("%s: %s", fatal_errors[error_code], error_code)
+            if self.state:
+                self.state.status_flag.value = -1  # Mark as error
+            raise
+
+        # Transient errors - log and retry
+        logger.warning("AWS client error: %s, retrying in 5s...", error_code)
+        time.sleep(5)
 
     def _delete_message(self, message_id: str, receipt_handle: str) -> None:
         """Delete a message from the queue with error handling.
@@ -120,122 +200,32 @@ class Worker:
                 # Message will become visible again after visibility timeout
                 raise
 
-    def _process_messages(self, messages: list[SQSMessage]) -> None:
-        """Process a list of messages.
+    def _process_message(self, message: SQSMessage) -> None:
+        """Process a single SQS message.
 
         Args:
-            messages: List of validated SQS messages
+            message: Validated SQS message to process
         """
-        for message in messages:
-            message_id = message.message_id
-            body = message.body
-            receipt_handle = message.receipt_handle
+        message_id = message.message_id
+        body = message.body
+        receipt_handle = message.receipt_handle
 
-            logger.info("Received message: %s", message_id)
-            logger.info("Message body: %s", body)
+        logger.info("Received message: %s", message_id)
+        logger.info("Message body: %s", body)
 
-            self._delete_message(message_id, receipt_handle)
+        # Set task timing for adaptive timeout during processing
+        if self.state:
+            self.state.task_start_time.value = time.time()
+            self.state.expected_task_duration.value = DEFAULT_TASK_DURATION
 
-    def run(self) -> None:
-        """Main polling loop - receives, logs, and deletes SQS messages."""
-        logger.info("Worker started, polling for messages...")
-        logger.info("Queue URL: %s", self.sqs_queue_url)
+        try:
+            # TODO: Add actual impact assessment processing logic here
+            pass
+        finally:
+            # Clear task timing and update heartbeat after processing completes
+            if self.state:
+                self.state.task_start_time.value = 0.0
+                self.state.expected_task_duration.value = 0.0
+                self.state.last_heartbeat.value = time.time()
 
-        while self.running:
-            try:
-                # Long polling with 20 second wait time
-                response = self.sqs_client.receive_message(
-                    QueueUrl=self.sqs_queue_url,
-                    MaxNumberOfMessages=1,
-                    WaitTimeSeconds=20,
-                )
-
-                validated_response = SQSMessageResponse(**response)
-                messages = validated_response.messages or []
-
-                if messages:
-                    self._process_messages(messages)
-                else:
-                    logger.debug("No messages received (20s poll timeout)")
-
-            except botocore.exceptions.ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code", "")
-                if error_code == "QueueDoesNotExist":
-                    logger.error("Queue does not exist, cannot continue")
-                    raise  # Fatal error
-                if error_code in (
-                    "AccessDenied",
-                    "InvalidAccessKeyId",
-                    "SignatureDoesNotMatch",
-                ):
-                    logger.error("Authentication/authorization error: %s", error_code)
-                    raise  # Fatal error
-                logger.warning("AWS client error: %s, retrying...", error_code)
-                time.sleep(5)
-            except botocore.exceptions.BotoCoreError as e:
-                logger.warning("AWS SDK error (network/timeout): %s, retrying...", e)
-                time.sleep(5)
-            except KeyboardInterrupt:
-                # Allow graceful shutdown
-                raise
-            except Exception as e:
-                logger.exception("Unexpected error processing message: %s", e)
-                time.sleep(5)
-
-        logger.info("Worker stopped")
-
-
-def main() -> None:
-    """Worker entry point with health server.
-
-    Starts Flask health server in background thread, then runs
-    SQS polling worker in main thread (blocks until shutdown signal).
-    """
-    try:
-        logger.info("Initializing NRF Impact Assessment Worker...")
-
-        config = WorkerConfig()
-        logger.info(
-            "Configuration loaded: region=%s, endpoint=%s, queue_name=%s",
-            config.region,
-            config.endpoint_url,
-            config.sqs_queue_name,
-        )
-
-        # Before starting health server, check if port is available
-        if not is_port_available(config.health_port):
-            logger.error("Health port %s is not available", config.health_port)
-            sys.exit(1)
-
-        sqs_client = boto3.client(
-            "sqs",
-            region_name=config.region,
-            endpoint_url=config.endpoint_url,
-        )
-        logger.info("SQS client initialized")
-
-        # Look up queue URL from queue name (CDP pattern)
-        logger.info("Looking up queue URL for: %s", config.sqs_queue_name)
-        queue_url_response = sqs_client.get_queue_url(QueueName=config.sqs_queue_name)
-        sqs_queue_url = queue_url_response["QueueUrl"]
-        logger.info("Queue URL resolved: %s", sqs_queue_url)
-
-        health_thread = threading.Thread(
-            target=run_health_server,
-            args=(config.health_port,),
-            daemon=True,
-            name="health-server",
-        )
-        health_thread.start()
-        logger.info("Health check server started in background thread")
-
-        worker = Worker(sqs_client=sqs_client, sqs_queue_url=sqs_queue_url)
-        worker.run()
-
-    except Exception:
-        logger.exception("Worker failed to start")
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
+        self._delete_message(message_id, receipt_handle)
