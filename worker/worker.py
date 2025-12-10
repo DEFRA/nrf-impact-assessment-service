@@ -158,6 +158,7 @@ class Worker:
             "QueueDoesNotExist": "Queue does not exist or was deleted",
             "InvalidAccessKeyId": "AWS credentials invalid",
             "SignatureDoesNotMatch": "Request signature verification failed",
+            "AccessDenied": "Insufficient IAM permissions",
         }
 
         if error_code in fatal_errors:
