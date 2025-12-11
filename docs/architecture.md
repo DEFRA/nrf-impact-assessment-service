@@ -3,6 +3,10 @@
 **Date:** 2025-12-09
 **Service Type:** CPU-intensive SQS consumer with HTTP health endpoint
 
+> **⚠️ IMPORTANT NOTE:**
+> The timeout values, health check thresholds, and retry configurations documented here are **initial estimates** based on what we've seen with two initial impact assessments in non production envs.
+> These have **not been validated** and should be tuned based on actual metrics and performance data once load/capacity testing is done.
+
 ---
 
 ## Overview
@@ -149,25 +153,31 @@ else:
 
 ## Configuration
 
-All behavior configurable via environment variables:
+Most configuration is hardcoded with sensible defaults. Optional environment variable overrides:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `AWS_SQS_QUEUE_NAME` | `nrf_impact_assessment_queue` | SQS queue name |
-| `AWS_SQS_WAIT_TIME_SECONDS` | `20` | Long polling wait (max: 20) |
-| `AWS_HEALTH_PORT` | `8085` | Health endpoint port |
-| `HEARTBEAT_TIMEOUT` | `180` | Health check timeout (seconds) |
+| `SQS_ENDPOINT` | _(AWS default)_ | SQS endpoint (LocalStack only) |
+| `SQS_WAIT_TIME_SECONDS` | `20` | Long polling wait (max: 20) |
+| `HEALTH_PORT` | `8085` | Health endpoint port |
+| `HEARTBEAT_TIMEOUT` | `120` | Health check timeout (seconds) |
 | `TASK_TIMEOUT_BUFFER` | `1.5` | Adaptive timeout multiplier |
+
+**Hardcoded values:**
+- Region: `eu-west-2` (all CDP environments)
+- Queue name: `nrf_impact_assessment_queue`
 
 ### Tuning Guidelines
 
-**`AWS_SQS_WAIT_TIME_SECONDS`:**
+> **Note:** These are initial estimates and should be adjusted based on production metrics.
+
+**`SQS_WAIT_TIME_SECONDS`:**
 - Production: `20` (maximum, most efficient)
 - Development: `5-10` (faster shutdown for testing)
 
 **`HEARTBEAT_TIMEOUT`:**
-- Base on P95 processing time
-- Example: If 95% of messages process in 2 minutes, set to `180` (3 minutes)
+- Current: `120s` (2 minutes) - reduced from 180s due to retry logic
+- Base on P95 processing time once measured
 - Too low: False positives (ECS restarts healthy tasks)
 - Too high: Slow hang detection
 
@@ -180,7 +190,9 @@ All behavior configurable via environment variables:
 **Fatal errors** (mark as error, re-raise):
 - `QueueDoesNotExist`: Queue not found or deleted
 - `InvalidAccessKeyId`: AWS credentials invalid
+- `InvalidClientTokenId`: AWS security token invalid
 - `SignatureDoesNotMatch`: Request signature verification failed
+- `AccessDenied`: Insufficient IAM permissions
 
 **Note:** If using an encrypted queue, add `KmsAccessDenied`, `KmsDisabled`, `KmsNotFound` to fatal errors list.
 
