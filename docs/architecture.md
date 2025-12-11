@@ -206,14 +206,34 @@ Most configuration is hardcoded with sensible defaults. Optional environment var
 
 ### Error handling behavior
 
-- **Fatal errors**: Mark worker as failed (status=-1) and terminate
-- **Transient errors**: Log warning, sleep 5s, retry
-- **Unexpected errors**: Log with full traceback, sleep 5s, retry
-- **KeyboardInterrupt**: Re-raised for graceful shutdown (local development only)
+The worker uses the **tenacity** library for automatic retry logic with exponential backoff:
+
+**Retry configuration** (`_receive_messages()` at worker/worker.py:113):
+- Exponential backoff: 2s min, 30s max
+- Maximum attempts: 5
+- Only retries errors identified by `is_transient_aws_error()`
+
+**Fatal errors** (non-transient, cause immediate failure):
+- `QueueDoesNotExist`: Queue not found or deleted
+- `InvalidAccessKeyId`: AWS credentials invalid
+- `InvalidClientTokenId`: AWS security token invalid
+- `SignatureDoesNotMatch`: Request signature verification failed
+- `AccessDenied`: Insufficient IAM permissions
+- Any `ClientError` with code not in `TRANSIENT_ERROR_CODES`
+
+**Transient errors** (retried automatically):
+- Network errors (`BotoCoreError`)
+- Throttling (`Throttling`, `ThrottlingException`, `ProvisionedThroughputExceededException`)
+- Service issues (`ServiceUnavailable`, `InternalFailure`, `InternalError`, `OverLimit`)
+
+**Behavior:**
+- **Transient errors**: Log warning, wait with exponential backoff, retry up to 5 times
+- **Fatal errors or retry exhaustion**: Log exception, mark worker as failed (status=-1), terminate
+- **KeyboardInterrupt**: Graceful shutdown (local development only)
 
 This approach keeps the worker resilient to temporary issues while failing fast on unrecoverable configuration or authentication problems.
 
-See `worker/worker.py:_handle_client_error()` for implementation.
+See `worker/worker.py:is_transient_aws_error()` for error classification and `_receive_messages()` for retry implementation.
 
 ---
 
