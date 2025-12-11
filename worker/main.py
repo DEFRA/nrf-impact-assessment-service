@@ -10,7 +10,7 @@ import boto3
 
 from worker.config import WorkerConfig
 from worker.health import run_health_server
-from worker.state import create_shared_state
+from worker.state import WorkerStatus, create_shared_state
 from worker.utils import managed_process
 from worker.worker import Worker
 
@@ -32,9 +32,12 @@ def main() -> None:
     # Load configuration
     config = WorkerConfig()
     logger.info(
-        "Configuration loaded: queue_name=%s, health check port=%s",
+        "Configuration loaded: queue_name=%s, region=%s, health_port=%s, wait_time=%ss, endpoint_url=%s",
         config.sqs_queue_name,
+        config.region,
         config.health_port,
+        config.sqs_wait_time_seconds,
+        config.endpoint_url or "(default AWS endpoint)",
     )
 
     # Create shared state for IPC
@@ -44,7 +47,7 @@ def main() -> None:
         # Start health server process using the context manager
         with managed_process(
             target=run_health_server,
-            args=(state, config.health_port),
+            args=(state, config),
             name="health-server",
         ) as health_process:
             logger.info("Health server process started (PID: %s)", health_process.pid)
@@ -57,15 +60,25 @@ def main() -> None:
             )
             logger.info("SQS client initialized")
 
-            # Look up queue URL from queue name (CDP pattern)
-            logger.info("Looking up queue URL for: %s", config.sqs_queue_name)
-            queue_url_response = sqs_client.get_queue_url(
-                QueueName=config.sqs_queue_name
+            logger.info(
+                "Looking up queue URL for queue_name=%s in region=%s",
+                config.sqs_queue_name,
+                config.region,
             )
-            sqs_queue_url = queue_url_response["QueueUrl"]
-            logger.info("Queue URL resolved: %s", sqs_queue_url)
+            try:
+                queue_url_response = sqs_client.get_queue_url(
+                    QueueName=config.sqs_queue_name
+                )
+                sqs_queue_url = queue_url_response["QueueUrl"]
+                logger.info("Queue URL resolved successfully: %s", sqs_queue_url)
+            except Exception as e:
+                logger.error(
+                    "Failed to get queue URL for queue_name=%s: %s",
+                    config.sqs_queue_name,
+                    e,
+                )
+                raise
 
-            # Create worker with shared state
             worker = Worker(
                 sqs_client=sqs_client,
                 sqs_queue_url=sqs_queue_url,
@@ -84,13 +97,14 @@ def main() -> None:
 
     except Exception as e:
         logger.exception("Fatal error in main process: %s", e)
-        state.status_flag.value = -1  # Mark as errored
+        state.status_flag.value = WorkerStatus.ERROR
         sys.exit(1)
 
     finally:
         logger.info("Shutdown complete")
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()
