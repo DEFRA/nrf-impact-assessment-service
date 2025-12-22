@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-import logging
+import json
+import logging.config
+import os
 import signal
 import sys
 
@@ -14,10 +16,12 @@ from worker.state import WorkerStatus, create_shared_state
 from worker.utils import managed_process
 from worker.worker import Worker
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Load logging configuration from JSON file
+config_file = os.getenv("LOG_CONFIG", "logging-dev.json")
+with open(config_file) as f:
+    log_config = json.load(f)
+    logging.config.dictConfig(log_config)
+
 logger = logging.getLogger(__name__)
 
 
