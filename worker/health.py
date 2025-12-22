@@ -1,6 +1,9 @@
 """Health check HTTP server process for CDP platform compliance."""
 
+import json
 import logging
+import logging.config
+import os
 import time
 from typing import Any
 
@@ -9,6 +12,13 @@ from waitress import serve
 
 from worker.config import WorkerConfig
 from worker.state import WorkerState, WorkerStatus
+
+# Load logging configuration from JSON file
+# This is needed because health server runs in a separate process
+config_file = os.getenv("LOG_CONFIG", "logging-dev.json")
+with open(config_file) as f:
+    log_config = json.load(f)
+    logging.config.dictConfig(log_config)
 
 logger = logging.getLogger(__name__)
 
